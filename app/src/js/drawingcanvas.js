@@ -55,6 +55,7 @@
 
     function drawSpines() {
       var endPoint;
+
       for(var i = 0; i < options.spineCount; i++){
         bgCtx.beginPath();
         bgCtx.lineWidth = "1";
@@ -68,12 +69,21 @@
 
       function getEndPoint(i) {
         var eP = {x: null, y: null};
-        var degOffset = (360 / options.spineCount) * i;
-        console.log("Offset:\n\t%f [deg]\n\t%f [rad]", degOffset, degOffset.toRad());
+        var radOffset = ((360 / options.spineCount) * i).toRad();
+        console.log("Offset:\n\t%f [deg]\n\t%f [rad]", radOffset.toDeg(), radOffset);
+        // cos a = b / c
+        // c = b / cos a
 
+        // calulcate distance to endPoint
+        var distance = {x: null, y: null};
+        var distanceToXAxis = (Math.cos(radOffset) !== 0) ? (center.y / Math.cos(radOffset)) : bgCanvas.width;
+        distance.x = (Math.abs(distanceToXAxis) < bgCanvas.width) ? distanceToXAxis : (bgCanvas.width / 2);
+        console.log("distance: ", distance.x, distance.y);
 
-        eP.x = center.x + i * 360 / options.spineCount;
-        eP.y = 0 + i;
+        // TODO calculate position of endpoint using angle and distance
+
+        eP.x = 0
+        eP.y = 0;
         return eP;
       }
 
