@@ -12,7 +12,7 @@
         center;
 
     var options = {
-      spineCount:       4,
+      spineCount:       8,
       spineColor:       "#ffffff",
       backgroundColor:  "#000000",
     };
@@ -31,12 +31,7 @@
       center.y = bgCanvas.height / 2;
     });
 
-    center = {
-      x: bgCanvas.width / 2,
-      y: bgCanvas.height / 2,
-      radius: 4,
-    };
-
+    center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
 
     running = true;
     draw();
@@ -68,22 +63,27 @@
       }
 
       function getEndPoint(i) {
-        var eP = {x: null, y: null};
+        var eP = new Victor(0, 0);
         var radOffset = ((360 / options.spineCount) * i).toRad();
+        var cosRadOffset = Math.cos(radOffset);
         console.log("Offset:\n\t%f [deg]\n\t%f [rad]", radOffset.toDeg(), radOffset);
         // cos a = b / c
         // c = b / cos a
 
         // calulcate distance to endPoint
-        var distance = {x: null, y: null};
-        var distanceToXAxis = (Math.cos(radOffset) !== 0) ? (center.y / Math.cos(radOffset)) : bgCanvas.width;
-        distance.x = (Math.abs(distanceToXAxis) < bgCanvas.width) ? distanceToXAxis : (bgCanvas.width / 2);
+        var distance = new Victor(0, 0);
+        var distanceToXAxis = (cosRadOffset !== 0) ? (center.y / cosRadOffset) : bgCanvas.height;
+        var distanceToYAxis = (cosRadOffset !== 0) ? (center.x / cosRadOffset) : bgCanvas.width;
+        console.log(distanceToXAxis, distanceToYAxis);
+
+        // prevector
+        // distance.x = (Math.abs(distanceToXAxis) < bgCanvas.height / 2) ? distanceToXAxis : (bgCanvas.width  / 2);
+        // distance.y = (Math.abs(distanceToYAxis) < bgCanvas.width  / 2) ? distanceToYAxis : (bgCanvas.height / 2);
+
         console.log("distance: ", distance.x, distance.y);
 
         // TODO calculate position of endpoint using angle and distance
 
-        eP.x = 0
-        eP.y = 0;
         return eP;
       }
 
