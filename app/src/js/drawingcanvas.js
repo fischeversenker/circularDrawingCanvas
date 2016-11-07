@@ -49,6 +49,7 @@
       bgCtx.fillStyle = options.backgroundColor;
       bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
 
+      // draw spines
       drawSpines();
     }
 
@@ -68,7 +69,7 @@
       function getEndPoint(i) {
         var eP = {x: null, y: null};
         var degOffset = (360 / options.spineCount) * i;
-        console.log(degOffset);
+        console.log("Offset:\n\t%f [deg]\n\t%f [rad]", degOffset, degOffset.toRad());
 
 
         eP.x = center.x + i * 360 / options.spineCount;
