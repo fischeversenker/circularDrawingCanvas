@@ -9,6 +9,11 @@
     var drawingCanvas = $("<canvas/>").insertAfter($(bgCanvas)).get(0);
     var drawingCtx = drawingCanvas.getContext("2d");
 
+    var $resetDrawerButton  = $("#reset-drawer-button");
+    $resetDrawerButton.on('click', function() {
+      resetSectors();
+    });
+
     var $drawer = $("#drawer");
 
     var running = false,
@@ -59,11 +64,17 @@
       run();
     });
 
+    // maybe add touch support?
     $(drawingCanvas).on('mousedown', function(e) {
       if(running) {
         drawing = true;
         for(var i = 0; i < sectors.length; i++){
-          sectors[i].drawStroke(new Victor(e.offsetX, e.offsetY));
+          if(e.type !== "touchstart") { // TODO touch support
+            sectors[i].drawStroke(new Victor(e.offsetX, e.offsetY));
+          } else {
+            // console.log(e, e.targetTouches);
+            // sectors[i].drawStroke(new Victor(e.targetTouches[0].offsetX, e.targetTouches[0].offsetY));
+          }
         }
       }
     });
@@ -71,7 +82,11 @@
       if(running && drawing) {
         e.preventDefault();
         for(var i = 0; i < sectors.length; i++){
-          sectors[i].drawStroke(new Victor(e.offsetX, e.offsetY));
+          if(e.type !== "touchmove") {
+            sectors[i].drawStroke(new Victor(e.offsetX, e.offsetY));
+          } else {
+            // sectors[i].drawStroke(new Victor(e.touches[0].offsetX, e.touches[0].offsetY));
+          }
         }
       }
     });
