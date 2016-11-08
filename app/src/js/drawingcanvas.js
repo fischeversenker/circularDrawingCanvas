@@ -2,93 +2,172 @@
   "use strict";
 
   $(function() {
+    var DEVELOPMENT = false;
 
-    var bgCanvas = $("#drawer").get(0);
+    var bgCanvas = $("<canvas />").appendTo($("#drawer")).get(0);
     var bgCtx = bgCanvas.getContext("2d");
     var drawingCanvas = $("<canvas/>").insertAfter($(bgCanvas)).get(0);
     var drawingCtx = drawingCanvas.getContext("2d");
 
+    var $drawer = $("#drawer");
+
     var running = false,
         center;
 
+    var runTime = 0,
+        maxRunTime = 1,
+        drawing = false;
+
     var options = {
-      spineCount:       8,
+      spineCount:       12,
       spineColor:       "#ffffff",
+      strokeColor:      "#ffffff",
+      strokeSize:       2,
       backgroundColor:  "#000000",
     };
+
+    var sectors = [];
+
+    var $spineCountInput = $("#spine-count-input");
+    $spineCountInput.val(options.spineCount);
+    $spineCountInput.on('change', function() {
+      options.spineCount = $(this).val();
+      runTime = 0;
+      resetSectors();
+    });
 
     bgCanvas.width  = $(window).width();
     bgCanvas.height = $(window).height();
     drawingCanvas.width  = $(window).width();
     drawingCanvas.height = $(window).height();
 
+    if(DEVELOPMENT) {
+      bgCanvas.width  = $drawer.width();
+      bgCanvas.height = $drawer.height();
+      drawingCanvas.width  = $drawer.width();
+      drawingCanvas.height = $drawer.height();
+    }
+
     $(window).resize(function() {
+      if(DEVELOPMENT) return;
       bgCanvas.width  = $(window).width();
       bgCanvas.height = $(window).height();
       drawingCanvas.width  = $(window).width();
       drawingCanvas.height = $(window).height();
       center.x = bgCanvas.width / 2;
       center.y = bgCanvas.height / 2;
+      run();
     });
 
-    center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
+    $(drawingCanvas).on('mousedown', function(e) {
+      if(running) {
+        drawing = true;
+        for(var i = 0; i < sectors.length; i++){
+          sectors[i].drawStroke(new Victor(e.offsetX, e.offsetY));
+        }
+      }
+    });
+    $(drawingCanvas).on('mousemove', function(e) {
+      if(running && drawing) {
+        e.preventDefault();
+        for(var i = 0; i < sectors.length; i++){
+          sectors[i].drawStroke(new Victor(e.offsetX, e.offsetY));
+        }
+      }
+    });
+    $(drawingCanvas).on('mouseup', function(e) {
+      drawing = false;
+    });
 
-    running = true;
-    draw();
+    run();
 
-
-    function draw() {
-      // if(running) window.requestAnimFrame(draw);
-
-      // clear bgCanvas
-      bgCtx.fillStyle = options.backgroundColor;
-      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-
-      // draw spines
-      drawSpines();
+    function run() {
+      center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
+      resetSectors();
+      running = true;
     }
 
-    function drawSpines() {
+    function resetSectors() {
+      bgCtx.fillStyle = options.backgroundColor;
+      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      bgCtx.fillStyle = options.spineColor;
       var endPoint;
+      var degAngle = (360 / options.spineCount);
+
+      sectors = [];
 
       for(var i = 0; i < options.spineCount; i++){
+        var sector = new Sector(center, degAngle, i);
+        sector.drawSpine();
+        sectors.push(sector);
+      }
+    }
+
+    function getEndPoint(startPoint, i) {
+      var eP = startPoint.clone();
+      var degAngle = ((360 / options.spineCount) * i);
+      var radAngle = degAngle.toRad();
+      // half diagonal of canvas using pythagoras
+      var maxDistance = Math.sqrt(Math.pow(startPoint.x, 2) + Math.pow(startPoint.y, 2));
+      var upVec = new Victor(0, -startPoint.y);
+      var moveVec  = new Victor(0, 0);
+      var distance = 0;
+      if(Math.cos(radAngle) > 0.0001 || Math.cos(radAngle) < -0.0001) {
+        distance = startPoint.y / Math.cos(radAngle);
+      } else if(Math.sin(radAngle) > 0.0001 || Math.sin(radAngle) < -0.0001) {
+        distance = startPoint.x / Math.sin(radAngle);
+      }
+      distance = Math.abs(Math.min(maxDistance, distance));
+      // creating and adding direction vector to eP (cloned from startPoint) to get final endpoint of spine
+      eP.add(new Victor(distance * Math.sin(radAngle), distance * Math.cos(radAngle)));
+      return eP;
+    }
+
+    // pseudo class Sector who has a function to draw in it independently of orientation
+    // takes draw anweisung as if it was the first sector
+    // angles in radians
+    function Sector(startPoint, angle, id) {
+
+      var endPoint = getEndPoint(startPoint, id);
+
+      // takes victor pos
+      function _drawStroke(pos) {
+        drawingCtx.fillStyle = options.strokeColor;
+        // rotate pos by (angle * id) degrees around startPoint
+        pos.subtract(startPoint);
+        pos.rotate((angle * id).toRad());
+        pos.add(startPoint);
+        drawingCtx.fillRect(pos.x - options.strokeSize, pos.y - options.strokeSize, options.strokeSize, options.strokeSize);
+      }
+
+      function _drawSpine() {
         bgCtx.beginPath();
         bgCtx.lineWidth = "1";
         bgCtx.strokeStyle = options.spineColor;
-        bgCtx.moveTo(center.x, center.y);
+        bgCtx.moveTo(startPoint.x, startPoint.y);
         // logic for spines missing
-        endPoint = getEndPoint(i);
         bgCtx.lineTo(endPoint.x, endPoint.y);
         bgCtx.stroke();
       }
 
-      function getEndPoint(i) {
-        var eP = new Victor(0, 0);
-        var radOffset = ((360 / options.spineCount) * i).toRad();
-        var cosRadOffset = Math.cos(radOffset);
-        console.log("Offset:\n\t%f [deg]\n\t%f [rad]", radOffset.toDeg(), radOffset);
-        // cos a = b / c
-        // c = b / cos a
-
-        // calulcate distance to endPoint
-        var distance = new Victor(0, 0);
-        var distanceToXAxis = (cosRadOffset !== 0) ? (center.y / cosRadOffset) : bgCanvas.height;
-        var distanceToYAxis = (cosRadOffset !== 0) ? (center.x / cosRadOffset) : bgCanvas.width;
-        console.log(distanceToXAxis, distanceToYAxis);
-
-        // prevector
-        // distance.x = (Math.abs(distanceToXAxis) < bgCanvas.height / 2) ? distanceToXAxis : (bgCanvas.width  / 2);
-        // distance.y = (Math.abs(distanceToYAxis) < bgCanvas.width  / 2) ? distanceToYAxis : (bgCanvas.height / 2);
-
-        console.log("distance: ", distance.x, distance.y);
-
-        // TODO calculate position of endpoint using angle and distance
-
-        return eP;
+      function _isInSector(pos) {
+        // TODO LOGIC
+        return false;
       }
 
+      return {
+        drawStroke: _drawStroke,
+        drawSpine: _drawSpine,
+        isInSector: _isInSector,
+        getStartAngle: function() {
+          return startAngle;
+        },
+      };
 
     }
+
+
   });
 })($);
 
