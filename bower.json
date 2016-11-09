@@ -5,6 +5,7 @@
   "private": true,
   "dependencies": {
     "jquery": "2.0.x",
-    "victor": "1.x.x"
+    "victor": "1.x.x",
+    "dat.gui": "*"
   }
 }
