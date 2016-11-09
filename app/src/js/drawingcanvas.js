@@ -212,8 +212,14 @@
         pos.subtract(startPoint);
         pos.rotate((angle * id).toRad());
         pos.add(startPoint);
-        drawingCtx.fillStyle = options.sectorColors[_isInSector(pos)];
+        var relPos = pos.clone().subtract(startPoint);
+        var hue = _getAngleNorm(pos) * 360;
+        var v = Math.min(100, Math.sqrt(Math.pow(relPos.x, 2) + Math.pow(relPos.y, 2)) / 4);
+        //3 diff drawing methods
+        //drawingCtx.fillStyle = options.sectorColors[_isInSector(pos)];
+        drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)'
         //drawingCtx.fillStyle = "#" + Math.floor(Math.random() * 256).toString(16) + Math.floor(Math.random() * 256).toString(16) + Math.floor(Math.random() * 256).toString(16);
+
         drawingCtx.fillRect(pos.x - options.strokeSize, pos.y - options.strokeSize, options.strokeSize, options.strokeSize);
       }
 
@@ -227,13 +233,16 @@
         bgCtx.lineTo(endPoint.x, endPoint.y);
         bgCtx.stroke();
       }
-
-      function _isInSector(pos) {
+      function _getAngleNorm(pos) {
         var relPos = new Victor(
-            pos.x - startPoint.x,
-            pos.y - startPoint.y
+          pos.x - startPoint.x,
+          pos.y - startPoint.y
         );
-        return Math.floor((Math.atan2(relPos.y, relPos.x) + Math.PI) / (Math.PI * 2)  * options.spineCount);
+        var angle = (Math.atan2(relPos.y, relPos.x) + Math.PI);
+        return  angle / (Math.PI * 2)
+      }
+      function _isInSector(pos) {
+        return Math.floor(_getAngleNorm(pos)  * options.spineCount);
       }
 
       return {
