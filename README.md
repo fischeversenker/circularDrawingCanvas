@@ -2,4 +2,4 @@
 
 [Live Preview](http://felixhamann.de/tests/drawer)
 
-![first ever result in (kind of) fullscreen](https://raw.githubusercontent.com/fischeversenker/circularDrawingCanvas/master/screen.jpg)
+![first ever result in (kind of) fullscreen](https://raw.githubusercontent.com/salt42/circularDrawingCanvas/master/screen.jpg)
