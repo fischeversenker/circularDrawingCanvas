@@ -30,7 +30,8 @@
       strokeSize:       2,
       backgroundColor:  "#000000",
       sectorColors:     [],
-      drawSections:     false
+      drawSections:     false,
+      renderStyle:      0
     };
 
     var sectors = [];
@@ -81,6 +82,9 @@
     });
     gui.addColor(options, 'strokeColor');
     gui.addColor(options, 'backgroundColor');
+    gui.add(options, 'renderStyle', { HsL: 0, Hsl: 1, ColorArray: 2, StrokeColor: 3 } ).onFinishChange(function() {
+      options.renderStyle = parseInt(options.renderStyle);
+    });
 
 
     var $spineCountInput = $("#spine-count-input");
@@ -102,16 +106,22 @@
       drawingCanvas.width  = $drawer.width();
       drawingCanvas.height = $drawer.height();
     }
+    //download handler
+    var hiddenLink = $("#downloadLink");
+    document.getElementById('download').addEventListener('click', function() {
+      this.href = drawingCanvas.toDataURL('image/jpeg');
+      this.download = "MyImage.jpg";
+    }, false);
 
     $(window).resize(function() {
-      if(DEVELOPMENT) return;
-      bgCanvas.width  = $(window).width();
-      bgCanvas.height = $(window).height();
-      drawingCanvas.width  = $(window).width();
-      drawingCanvas.height = $(window).height();
-      center.x = bgCanvas.width / 2;
-      center.y = bgCanvas.height / 2;
-      run();
+      // if(DEVELOPMENT) return;
+      // bgCanvas.width  = $(window).width();
+      // bgCanvas.height = $(window).height();
+      // drawingCanvas.width  = $(window).width();
+      // drawingCanvas.height = $(window).height();
+      // center.x = bgCanvas.width / 2;
+      // center.y = bgCanvas.height / 2;
+      // run();
     });
 
     // maybe add touch support?
@@ -212,13 +222,24 @@
         pos.subtract(startPoint);
         pos.rotate((angle * id).toRad());
         pos.add(startPoint);
+        //3 diff drawing methods
         var relPos = pos.clone().subtract(startPoint);
         var hue = _getAngleNorm(pos) * 360;
         var v = Math.min(100, Math.sqrt(Math.pow(relPos.x, 2) + Math.pow(relPos.y, 2)) / 4);
-        //3 diff drawing methods
-        //drawingCtx.fillStyle = options.sectorColors[_isInSector(pos)];
-        drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)'
-        //drawingCtx.fillStyle = "#" + Math.floor(Math.random() * 256).toString(16) + Math.floor(Math.random() * 256).toString(16) + Math.floor(Math.random() * 256).toString(16);
+        switch(options.renderStyle) {
+          case 0:
+            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+            break;
+          case 1:
+            drawingCtx.fillStyle = 'hsl('+ hue +', 100%, 50%)';
+            break;
+          case 2:
+            drawingCtx.fillStyle = options.sectorColors[_isInSector(pos)];
+            break;
+          case 3:
+            drawingCtx.fillStyle = options.strokeColor;
+            break;
+        }
 
         drawingCtx.fillRect(pos.x - options.strokeSize, pos.y - options.strokeSize, options.strokeSize, options.strokeSize);
       }
@@ -234,10 +255,7 @@
         bgCtx.stroke();
       }
       function _getAngleNorm(pos) {
-        var relPos = new Victor(
-          pos.x - startPoint.x,
-          pos.y - startPoint.y
-        );
+        var relPos = pos.clone().subtract(startPoint);
         var angle = (Math.atan2(relPos.y, relPos.x) + Math.PI);
         return  angle / (Math.PI * 2)
       }
