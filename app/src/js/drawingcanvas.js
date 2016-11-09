@@ -29,9 +29,59 @@
       strokeColor:      "#ffffff",
       strokeSize:       2,
       backgroundColor:  "#000000",
+      sectorColors:     [],
+      drawSections:     false
     };
 
     var sectors = [];
+
+
+
+
+    //generate color array
+    switch(1) {
+      case 0:
+        //random colors
+        for(var i = 0; i < 40; i++) {
+          options.sectorColors.push("#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16) );
+        }
+        break;
+      case 1:
+        var firstColor = "#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16);
+        var secColor = "#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16);
+        for(var i = 0; i < 40; i++) {
+          if (i < 6) {
+            options.sectorColors.push(firstColor);
+          } else {
+            options.sectorColors.push(secColor);
+          }
+        }
+        break;
+      case 2:
+        break;
+    }
+
+    var gui = new dat.GUI();
+    gui.add(options, 'spineCount');
+    gui.add(options, 'strokeSize', 1, 10);
+    gui.add(options, 'drawSections').onFinishChange(function() {
+      //dirty, weil deine resetSectors auch den drawCtx cleared
+      bgCtx.fillStyle = options.backgroundColor;
+      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      if (!options.drawSections) return;
+      bgCtx.fillStyle = options.spineColor;
+      var degAngle = (360 / options.spineCount);
+      sectors = [];
+
+      for(var i = 0; i < options.spineCount; i++){
+        var sector = new Sector(center, degAngle, i);
+        sector.drawSpine();
+        sectors.push(sector);
+      }
+    });
+    gui.addColor(options, 'strokeColor');
+    gui.addColor(options, 'backgroundColor');
+
 
     var $spineCountInput = $("#spine-count-input");
     $spineCountInput.val(options.spineCount);
@@ -97,7 +147,7 @@
     run();
 
     function run() {
-      center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
+      center = new Victor(200, 200);//bgCanvas.width / 2, bgCanvas.height / 2);
       resetSectors();
       running = true;
     }
@@ -112,11 +162,13 @@
 
       sectors = [];
 
+      console.time("a");
       for(var i = 0; i < options.spineCount; i++){
         var sector = new Sector(center, degAngle, i);
         sector.drawSpine();
         sectors.push(sector);
       }
+      console.timeEnd("a");
     }
 
     function getEndPoint(startPoint, i) {
@@ -138,13 +190,20 @@
       eP.add(new Victor(distance * Math.sin(radAngle), distance * Math.cos(radAngle)));
       return eP;
     }
+    function getEndPoint2(startPoint, i) {
+      var eP = startPoint.clone();
+      var radAngle = ((Math.PI * 2 / options.spineCount) * i);
 
+      eP.x = Math.cos(radAngle) * 999999;
+      eP.y = Math.sin(radAngle) * 999999;
+      eP.add(startPoint);
+      return eP;
+    }
     // pseudo class Sector who has a function to draw in it independently of orientation
     // takes draw anweisung as if it was the first sector
     // angles in radians
     function Sector(startPoint, angle, id) {
-
-      var endPoint = getEndPoint(startPoint, id);
+      var endPoint = getEndPoint2(startPoint, id);
 
       // takes victor pos
       function _drawStroke(pos) {
@@ -153,10 +212,13 @@
         pos.subtract(startPoint);
         pos.rotate((angle * id).toRad());
         pos.add(startPoint);
+        drawingCtx.fillStyle = options.sectorColors[_isInSector(pos)];
+        //drawingCtx.fillStyle = "#" + Math.floor(Math.random() * 256).toString(16) + Math.floor(Math.random() * 256).toString(16) + Math.floor(Math.random() * 256).toString(16);
         drawingCtx.fillRect(pos.x - options.strokeSize, pos.y - options.strokeSize, options.strokeSize, options.strokeSize);
       }
 
       function _drawSpine() {
+        if (!options.drawSections) return;
         bgCtx.beginPath();
         bgCtx.lineWidth = "1";
         bgCtx.strokeStyle = options.spineColor;
@@ -167,8 +229,11 @@
       }
 
       function _isInSector(pos) {
-        // TODO LOGIC
-        return false;
+        var relPos = new Victor(
+            pos.x - startPoint.x,
+            pos.y - startPoint.y
+        );
+        return Math.floor((Math.atan2(relPos.y, relPos.x) + Math.PI) / (Math.PI * 2)  * options.spineCount);
       }
 
       return {
