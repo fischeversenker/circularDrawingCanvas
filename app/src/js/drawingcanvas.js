@@ -150,22 +150,31 @@
 
     function drawStrokeAt(origPos) {
 
+      // to remember which sector we are in
       var relPos = origPos.clone().subtract(center);
       var angleOffset = (Math.atan2(relPos.y, relPos.x) + Math.PI);
 
       var pos,
+          hue,
+          v,
+          sectorId,
           sector,
-          sectorOverId = ((angleOffset / (Math.PI * 2)) * options.spineCount),
-          sectorOver = sectors[Math.floor(sectorOverId)];
+          sectorOverId = Math.min(options.spineCount - 1,
+                                  Math.floor(((angleOffset / (Math.PI * 2)) * options.spineCount))),
+          sectorOver = sectors[sectorOverId];
+
+          console.log(sectorOverId);
 
       for(var i = 0; i < options.spineCount; i++){
         sector  = sectors[i];
+        sectorId = sector.getId();
         pos = origPos.clone().subtract(center);
-        pos.rotate((sectorAngle * sector.getId()));
+        pos.rotate(sectorAngle * sectorId);
+        angleOffset = (Math.atan2(pos.y, pos.x) + Math.PI);
 
         // diff drawing methods
-        var hue = (sector.getId() / options.spineCount) * 360;
-        var v = Math.min(100, Math.sqrt(Math.pow(pos.x, 2) + Math.pow(pos.y, 2)) / 4);
+        hue = (angleOffset / (Math.PI * 2)) * 360;
+        v = Math.min(100, Math.sqrt(Math.pow(pos.x, 2) + Math.pow(pos.y, 2)) / 4);
         switch(options.renderStyle) {
           case 0:
             v = 20;
@@ -175,15 +184,17 @@
             drawingCtx.fillStyle = 'hsl('+ hue +', 100%, 50%)';
             break;
           case 2:
-            drawingCtx.fillStyle = options.sectorColors[sector.getId()];
+            drawingCtx.fillStyle = options.sectorColors[sectorId];
             break;
           case 4:
-            hue = (sectorOver.getId() / options.spineCount) * 360;
-            v = 20;
+            // buggy. wrong colors
+            hue = (sectorId / (options.spineCount-1)) * 360;
+            v = 50;
             drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
             break;
           default:
             drawingCtx.fillStyle = options.strokeColor;
+            break;
         }
 
         pos.add(center);
@@ -191,20 +202,20 @@
       }
     }
 
-    function getEndPoint2(startPoint, i) {
+    function getEndPoint(startPoint, i) {
       var eP = startPoint.clone();
       var radAngle = ((Math.PI * 2 / options.spineCount) * i);
 
       eP.x = Math.cos(radAngle) * 999999;
       eP.y = Math.sin(radAngle) * 999999;
-      eP.add(startPoint);
+      // eP.add(startPoint);
       return eP;
     }
     // pseudo class Sector who has a function to draw in it independently of orientation
     // takes draw anweisung as if it was the first sector
     // angles in radians
     function Sector(id) {
-      var endPoint = getEndPoint2(center, id);
+      var endPoint = getEndPoint(center, id);
 
       function _drawSpine() {
         if (!options.drawSections) return;
