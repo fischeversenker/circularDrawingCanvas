@@ -19,18 +19,17 @@
     var running = false,
         center;
 
-    var runTime = 0,
-        maxRunTime = 1,
-        drawing = false;
+    var drawing = false,
+        sectorAngle;
 
     var options = {
-      spineCount:       12,
+      spineCount:       64,
       spineColor:       "#ffffff",
       strokeColor:      "#ffffff",
       strokeSize:       2,
       backgroundColor:  "#000000",
       sectorColors:     [],
-      drawSections:     false,
+      drawSections:     true,
       renderStyle:      0
     };
 
@@ -40,7 +39,7 @@
 
 
     //generate color array
-    switch(1) {
+    switch(0) {
       case 0:
         //random colors
         for(var i = 0; i < 40; i++) {
@@ -50,7 +49,7 @@
       case 1:
         var firstColor = "#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16);
         var secColor = "#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16);
-        for(var i = 0; i < 40; i++) {
+        for(i = 0; i < 40; i++) {
           if (i < 6) {
             options.sectorColors.push(firstColor);
           } else {
@@ -63,56 +62,38 @@
     }
 
     var gui = new dat.GUI();
-    gui.add(options, 'spineCount');
+    gui.add(options, 'spineCount').onFinishChange(function(newVal) {
+      options.spineCount = newVal;
+      resetSectors();
+    });
     gui.add(options, 'strokeSize', 1, 10);
     gui.add(options, 'drawSections').onFinishChange(function() {
-      //dirty, weil deine resetSectors auch den drawCtx cleared
-      bgCtx.fillStyle = options.backgroundColor;
-      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-      if (!options.drawSections) return;
-      bgCtx.fillStyle = options.spineColor;
-      var degAngle = (360 / options.spineCount);
-      sectors = [];
-
-      for(var i = 0; i < options.spineCount; i++){
-        var sector = new Sector(center, degAngle, i);
-        sector.drawSpine();
-        sectors.push(sector);
-      }
+      resetSectors();
     });
     gui.addColor(options, 'strokeColor');
     gui.addColor(options, 'backgroundColor');
-    gui.add(options, 'renderStyle', { HsL: 0, Hsl: 1, ColorArray: 2, StrokeColor: 3 } ).onFinishChange(function() {
+    gui.add(options, 'renderStyle', { HsL: 0, Hsl: 1, ColorArray: 2, StrokeColor: 3, UniColorSector: 4 } ).onFinishChange(function() {
       options.renderStyle = parseInt(options.renderStyle);
     });
+    gui.add({
+      download: function(){
+        this.href = drawingCanvas.toDataURL('image/jpeg');
+        this.download = "MyImage.jpg";
+      },
+    },'download');
+    gui.add({
+      clear: function(){
+        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      },
+    },'clear');
 
-
-    var $spineCountInput = $("#spine-count-input");
-    $spineCountInput.val(options.spineCount);
-    $spineCountInput.on('change', function() {
-      options.spineCount = $(this).val();
-      runTime = 0;
-      resetSectors();
-    });
 
     bgCanvas.width  = $(window).width();
     bgCanvas.height = $(window).height();
     drawingCanvas.width  = $(window).width();
     drawingCanvas.height = $(window).height();
 
-    if(DEVELOPMENT) {
-      bgCanvas.width  = $drawer.width();
-      bgCanvas.height = $drawer.height();
-      drawingCanvas.width  = $drawer.width();
-      drawingCanvas.height = $drawer.height();
-    }
     //download handler
-    var hiddenLink = $("#downloadLink");
-    document.getElementById('download').addEventListener('click', function() {
-      this.href = drawingCanvas.toDataURL('image/jpeg');
-      this.download = "MyImage.jpg";
-    }, false);
-
     $(window).resize(function() {
       // if(DEVELOPMENT) return;
       // bgCanvas.width  = $(window).width();
@@ -128,26 +109,13 @@
     $(drawingCanvas).on('mousedown', function(e) {
       if(running) {
         drawing = true;
-        for(var i = 0; i < sectors.length; i++){
-          if(e.type !== "touchstart") { // TODO touch support
-            sectors[i].drawStroke(new Victor(e.offsetX, e.offsetY));
-          } else {
-            // console.log(e, e.targetTouches);
-            // sectors[i].drawStroke(new Victor(e.targetTouches[0].offsetX, e.targetTouches[0].offsetY));
-          }
-        }
+        drawStrokeAt(new Victor(e.offsetX, e.offsetY));
       }
     });
     $(drawingCanvas).on('mousemove', function(e) {
       if(running && drawing) {
         e.preventDefault();
-        for(var i = 0; i < sectors.length; i++){
-          if(e.type !== "touchmove") {
-            sectors[i].drawStroke(new Victor(e.offsetX, e.offsetY));
-          } else {
-            // sectors[i].drawStroke(new Victor(e.touches[0].offsetX, e.touches[0].offsetY));
-          }
-        }
+        drawStrokeAt(new Victor(e.offsetX, e.offsetY));
       }
     });
     $(drawingCanvas).on('mouseup', function(e) {
@@ -165,41 +133,64 @@
     function resetSectors() {
       bgCtx.fillStyle = options.backgroundColor;
       bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-      drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      if (!options.drawSections) return;
       bgCtx.fillStyle = options.spineColor;
-      var endPoint;
-      var degAngle = (360 / options.spineCount);
 
       sectors = [];
+      sectorAngle = (360 / options.spineCount).toRad();
 
-      console.time("a");
+      console.time("creating and adding sectors");
       for(var i = 0; i < options.spineCount; i++){
-        var sector = new Sector(center, degAngle, i);
+        var sector = new Sector(i);
         sector.drawSpine();
         sectors.push(sector);
       }
-      console.timeEnd("a");
+      console.timeEnd("creating and adding sectors");
     }
 
-    function getEndPoint(startPoint, i) {
-      var eP = startPoint.clone();
-      var degAngle = ((360 / options.spineCount) * i);
-      var radAngle = degAngle.toRad();
-      // half diagonal of canvas using pythagoras
-      var maxDistance = Math.sqrt(Math.pow(startPoint.x, 2) + Math.pow(startPoint.y, 2));
-      var upVec = new Victor(0, -startPoint.y);
-      var moveVec  = new Victor(0, 0);
-      var distance = 0;
-      if(Math.cos(radAngle) > 0.0001 || Math.cos(radAngle) < -0.0001) {
-        distance = startPoint.y / Math.cos(radAngle);
-      } else if(Math.sin(radAngle) > 0.0001 || Math.sin(radAngle) < -0.0001) {
-        distance = startPoint.x / Math.sin(radAngle);
+    function drawStrokeAt(origPos) {
+
+      var relPos = origPos.clone().subtract(center);
+      var angleOffset = (Math.atan2(relPos.y, relPos.x) + Math.PI);
+
+      var pos,
+          sector,
+          sectorOverId = ((angleOffset / (Math.PI * 2)) * options.spineCount),
+          sectorOver = sectors[Math.floor(sectorOverId)];
+
+      for(var i = 0; i < options.spineCount; i++){
+        sector  = sectors[i];
+        pos = origPos.clone().subtract(center);
+        pos.rotate((sectorAngle * sector.getId()));
+
+        // diff drawing methods
+        var hue = (sector.getId() / options.spineCount) * 360;
+        var v = Math.min(100, Math.sqrt(Math.pow(pos.x, 2) + Math.pow(pos.y, 2)) / 4);
+        switch(options.renderStyle) {
+          case 0:
+            v = 20;
+            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+            break;
+          case 1:
+            drawingCtx.fillStyle = 'hsl('+ hue +', 100%, 50%)';
+            break;
+          case 2:
+            drawingCtx.fillStyle = options.sectorColors[sector.getId()];
+            break;
+          case 4:
+            hue = (sectorOver.getId() / options.spineCount) * 360;
+            v = 20;
+            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+            break;
+          default:
+            drawingCtx.fillStyle = options.strokeColor;
+        }
+
+        pos.add(center);
+        drawingCtx.fillRect(pos.x - options.strokeSize, pos.y - options.strokeSize, options.strokeSize, options.strokeSize);
       }
-      distance = Math.abs(Math.min(maxDistance, distance));
-      // creating and adding direction vector to eP (cloned from startPoint) to get final endpoint of spine
-      eP.add(new Victor(distance * Math.sin(radAngle), distance * Math.cos(radAngle)));
-      return eP;
     }
+
     function getEndPoint2(startPoint, i) {
       var eP = startPoint.clone();
       var radAngle = ((Math.PI * 2 / options.spineCount) * i);
@@ -212,64 +203,30 @@
     // pseudo class Sector who has a function to draw in it independently of orientation
     // takes draw anweisung as if it was the first sector
     // angles in radians
-    function Sector(startPoint, angle, id) {
-      var endPoint = getEndPoint2(startPoint, id);
-
-      // takes victor pos
-      function _drawStroke(pos) {
-        drawingCtx.fillStyle = options.strokeColor;
-        // rotate pos by (angle * id) degrees around startPoint
-        pos.subtract(startPoint);
-        pos.rotate((angle * id).toRad());
-        pos.add(startPoint);
-        //3 diff drawing methods
-        var relPos = pos.clone().subtract(startPoint);
-        var hue = _getAngleNorm(pos) * 360;
-        var v = Math.min(100, Math.sqrt(Math.pow(relPos.x, 2) + Math.pow(relPos.y, 2)) / 4);
-        switch(options.renderStyle) {
-          case 0:
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
-            break;
-          case 1:
-            drawingCtx.fillStyle = 'hsl('+ hue +', 100%, 50%)';
-            break;
-          case 2:
-            drawingCtx.fillStyle = options.sectorColors[_isInSector(pos)];
-            break;
-          case 3:
-            drawingCtx.fillStyle = options.strokeColor;
-            break;
-        }
-
-        drawingCtx.fillRect(pos.x - options.strokeSize, pos.y - options.strokeSize, options.strokeSize, options.strokeSize);
-      }
+    function Sector(id) {
+      var endPoint = getEndPoint2(center, id);
 
       function _drawSpine() {
         if (!options.drawSections) return;
         bgCtx.beginPath();
         bgCtx.lineWidth = "1";
         bgCtx.strokeStyle = options.spineColor;
-        bgCtx.moveTo(startPoint.x, startPoint.y);
+        bgCtx.moveTo(center.x, center.y);
         // logic for spines missing
         bgCtx.lineTo(endPoint.x, endPoint.y);
         bgCtx.stroke();
       }
-      function _getAngleNorm(pos) {
-        var relPos = pos.clone().subtract(startPoint);
-        var angle = (Math.atan2(relPos.y, relPos.x) + Math.PI);
-        return  angle / (Math.PI * 2)
-      }
       function _isInSector(pos) {
-        return Math.floor(_getAngleNorm(pos)  * options.spineCount);
+        return; // boolean if pos is in this sector
+      }
+      function _getId() {
+        return id;
       }
 
       return {
-        drawStroke: _drawStroke,
         drawSpine: _drawSpine,
         isInSector: _isInSector,
-        getStartAngle: function() {
-          return startAngle;
-        },
+        getId: _getId,
       };
 
     }
