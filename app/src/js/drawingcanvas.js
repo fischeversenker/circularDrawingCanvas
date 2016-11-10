@@ -4,22 +4,21 @@
   $(function() {
     var DEVELOPMENT = false;
 
-    var bgCanvas = $("<canvas />").appendTo($("#drawer")).get(0);
+    // UI Elements
+    var $drawer = $("#drawer");
+    var bgCanvas = $("<canvas />").appendTo($drawer).get(0);
     var bgCtx = bgCanvas.getContext("2d");
-    var drawingCanvas = $("<canvas/>").insertAfter($(bgCanvas)).get(0);
+    var drawingCanvas = $("<canvas/>").appendTo($drawer).get(0);
     var drawingCtx = drawingCanvas.getContext("2d");
 
-    var $resetDrawerButton  = $("#reset-drawer-button");
-    $resetDrawerButton.on('click', function() {
-      resetSectors();
-    });
 
-    var $drawer = $("#drawer");
-
+    // states
     var running = false,
-        center;
+        drawing = false;
 
-    var drawing = false,
+    // etc
+    var center,
+        sectors = [],
         sectorAngle;
 
     var options = {
@@ -33,100 +32,114 @@
       renderStyle:      0
     };
 
-    var sectors = [];
-
-    //generate color array
-    switch(1) {
-      case 0:
-        //random colors
-        for(var i = 0; i < 40; i++) {
-          options.sectorColors.push("#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16) );
-        }
-        break;
-      case 1:
-        var firstColor = "#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16);
-        var secColor = "#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16);
-        for(i = 0; i < 40; i++) {
-          if (i < 6) {
-            options.sectorColors.push(firstColor);
-          } else {
-            options.sectorColors.push(secColor);
-          }
-        }
-        break;
-      case 2:
-        break;
-    }
-
-    var gui = new dat.GUI();
-    gui.add(options, 'spineCount').onFinishChange(function(newVal) {
-      options.spineCount = newVal;
-      resetSectors();
-    });
-    gui.add(options, 'strokeSize', 1, 10);
-    gui.add(options, 'drawSections').onFinishChange(function() {
-      resetSectors();
-    });
-    gui.addColor(options, 'strokeColor');
-    gui.addColor(options, 'backgroundColor');
-    gui.add(options, 'renderStyle', { HsL: 0, Hsl: 1, ColorArray: 2, StrokeColor: 3, UniColorSector: 4 } ).onFinishChange(function() {
-      options.renderStyle = parseInt(options.renderStyle);
-    });
-    gui.add({
-      download: function(){
-        // TODO
-        var d = $("<a />").appendTo($("body")).get(0);
-        d.href = drawingCanvas.toDataURL('image/jpeg');
-        d.download = "MyImage.jpg";
-      },
-    },'download');
-    gui.add({
-      clear: function(){
-        resetSectors();
-        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-      },
-    },'clear');
-
-    bgCanvas.width  = $(window).width();
-    bgCanvas.height = $(window).height();
-    drawingCanvas.width  = $(window).width();
-    drawingCanvas.height = $(window).height();
-
-    //download handler
-    $(window).resize(function() {
-      // if(DEVELOPMENT) return;
-      // bgCanvas.width  = $(window).width();
-      // bgCanvas.height = $(window).height();
-      // drawingCanvas.width  = $(window).width();
-      // drawingCanvas.height = $(window).height();
-      // center.x = bgCanvas.width / 2;
-      // center.y = bgCanvas.height / 2;
-      // run();
-    });
-
-    // maybe add touch support?
-    $(drawingCanvas).on('mousedown', function(e) {
-      if(running) {
-        drawing = true;
-        drawStrokeAt(new Victor(e.offsetX, e.offsetY));
-      }
-    });
-    $(drawingCanvas).on('mousemove', function(e) {
-      if(running && drawing) {
-        e.preventDefault();
-        drawStrokeAt(new Victor(e.offsetX, e.offsetY));
-      }
-    });
-    $(drawingCanvas).on('mouseup', function(e) {
-      drawing = false;
-    });
-
+    init();
+    registerEventListeners();
+    registerDatGuiElements();
+    makeColorArray(1);
     run();
 
+    function init() {
+
+        bgCanvas.width  = $(window).width();
+        bgCanvas.height = $(window).height();
+        drawingCanvas.width  = $(window).width();
+        drawingCanvas.height = $(window).height();
+
+        center = new Victor(200, 200);//bgCanvas.width / 2, bgCanvas.height / 2);
+    }
+
     function run() {
-      center = new Victor(200, 200);//bgCanvas.width / 2, bgCanvas.height / 2);
       resetSectors();
       running = true;
+    }
+
+    function makeColorArray(mode) {
+        //generate color array
+        switch(1) {
+            case 0:
+            //random colors
+            for(var i = 0; i < 40; i++) {
+                options.sectorColors.push("#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16) );
+            }
+            break;
+            case 1:
+            var firstColor = "#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16);
+            var secColor = "#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16);
+            for(i = 0; i < 40; i++) {
+                if (i < 6) {
+                    options.sectorColors.push(firstColor);
+                } else {
+                    options.sectorColors.push(secColor);
+                }
+            }
+            break;
+            case 2:
+            break;
+        }
+    }
+
+    function registerEventListeners() {
+
+        // maybe add touch support?
+        $(drawingCanvas).on('mousedown', function(e) {
+          if(running) {
+            drawing = true;
+            drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+          }
+        });
+        $(drawingCanvas).on('mousemove', function(e) {
+          if(running && drawing) {
+            e.preventDefault();
+            drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+          }
+        });
+        $(drawingCanvas).on('mouseup', function(e) {
+          drawing = false;
+        });
+
+
+        //download handler
+        $(window).resize(function() {
+          // if(DEVELOPMENT) return;
+          // bgCanvas.width  = $(window).width();
+          // bgCanvas.height = $(window).height();
+          // drawingCanvas.width  = $(window).width();
+          // drawingCanvas.height = $(window).height();
+          // center.x = bgCanvas.width / 2;
+          // center.y = bgCanvas.height / 2;
+          // run();
+        });
+}
+
+    function registerDatGuiElements() {
+        var gui = new dat.GUI();
+        gui.add(options, 'spineCount').onChange(function(newVal) {
+          options.spineCount = newVal;
+          resetSectors();
+        });
+        gui.add(options, 'strokeSize', 1, 10);
+        gui.add(options, 'drawSections').onFinishChange(function() {
+          resetSectors();
+        });
+        gui.addColor(options, 'strokeColor');
+        gui.addColor(options, 'backgroundColor');
+        gui.add(options, 'renderStyle', { HsL: 0, Hsl: 1, ColorArray: 2, StrokeColor: 3, UniColorSector: 4 } ).onFinishChange(function() {
+          options.renderStyle = parseInt(options.renderStyle);
+        });
+        gui.add({
+          download: function(){
+            // TODO
+            var d = $("<a />").appendTo($("body")).get(0);
+            d.href = drawingCanvas.toDataURL('image/jpeg');
+            d.download = "MyImage.jpg";
+          },
+        },'download');
+        gui.add({
+          clear: function(){
+            resetSectors();
+            drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+          },
+        },'clear');
     }
 
     function resetSectors() {
