@@ -35,11 +35,8 @@
 
     var sectors = [];
 
-
-
-
     //generate color array
-    switch(0) {
+    switch(1) {
       case 0:
         //random colors
         for(var i = 0; i < 40; i++) {
@@ -77,16 +74,18 @@
     });
     gui.add({
       download: function(){
-        this.href = drawingCanvas.toDataURL('image/jpeg');
-        this.download = "MyImage.jpg";
+        // TODO
+        var d = $("<a />").appendTo($("body")).get(0);
+        d.href = drawingCanvas.toDataURL('image/jpeg');
+        d.download = "MyImage.jpg";
       },
     },'download');
     gui.add({
       clear: function(){
+        resetSectors();
         drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
       },
     },'clear');
-
 
     bgCanvas.width  = $(window).width();
     bgCanvas.height = $(window).height();
@@ -154,17 +153,11 @@
       var relPos = origPos.clone().subtract(center);
       var angleOffset = (Math.atan2(relPos.y, relPos.x) + Math.PI);
 
-      var pos,
-          hue,
-          v,
-          sectorId,
-          sector,
+      var pos, hue, v,
+          sectorId, sector,
           sectorOverId = Math.min(options.spineCount - 1,
                                   Math.floor(((angleOffset / (Math.PI * 2)) * options.spineCount))),
           sectorOver = sectors[sectorOverId];
-
-          console.log(sectorOverId);
-
       for(var i = 0; i < options.spineCount; i++){
         sector  = sectors[i];
         sectorId = sector.getId();
@@ -177,7 +170,6 @@
         v = Math.min(100, Math.sqrt(Math.pow(pos.x, 2) + Math.pow(pos.y, 2)) / 4);
         switch(options.renderStyle) {
           case 0:
-            v = 20;
             drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
             break;
           case 1:
@@ -187,7 +179,8 @@
             drawingCtx.fillStyle = options.sectorColors[sectorId];
             break;
           case 4:
-            // buggy. wrong colors
+            // TODO buggy. wrong colors.
+            // meant to be separating sectors by color
             hue = (sectorId / (options.spineCount-1)) * 360;
             v = 50;
             drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
@@ -205,14 +198,11 @@
     function getEndPoint(startPoint, i) {
       var eP = startPoint.clone();
       var radAngle = ((Math.PI * 2 / options.spineCount) * i);
-
       eP.x = Math.cos(radAngle) * 999999;
       eP.y = Math.sin(radAngle) * 999999;
-      // eP.add(startPoint);
       return eP;
     }
-    // pseudo class Sector who has a function to draw in it independently of orientation
-    // takes draw anweisung as if it was the first sector
+
     // angles in radians
     function Sector(id) {
       var endPoint = getEndPoint(center, id);
@@ -239,10 +229,7 @@
         isInSector: _isInSector,
         getId: _getId,
       };
-
     }
-
-
   });
 })($);
 
