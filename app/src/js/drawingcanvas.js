@@ -29,7 +29,9 @@
       backgroundColor:  "#000000",
       sectorColors:     [],
       drawSections:     true,
-      renderStyle:      0
+      renderStyle:      0,
+      offsetX:          0,
+      offsetY:          0
     };
 
     init();
@@ -112,34 +114,37 @@
 }
 
     function registerDatGuiElements() {
-        var gui = new dat.GUI();
-        gui.add(options, 'spineCount').onChange(function(newVal) {
-          options.spineCount = newVal;
+
+      var gui = new dat.GUI();
+      gui.add(options, 'spineCount');
+      gui.add(options, 'offsetX');
+      gui.add(options, 'offsetY');
+      gui.add({reset: function() {
+        resetSectors();
+      }}, 'reset');
+      gui.add(options, 'strokeSize', 1, 10);
+      gui.add(options, 'drawSections').onFinishChange(function() {
+        resetSectors();
+      });
+      gui.addColor(options, 'strokeColor');
+      gui.addColor(options, 'backgroundColor');
+      gui.add(options, 'renderStyle', { HsL: 0, Hsl: 1, ColorArray: 2, StrokeColor: 3 } ).onFinishChange(function() {
+        options.renderStyle = parseInt(options.renderStyle);
+      });
+      gui.add({
+        download: function(){
+          // TODO
+          var d = $("<a />").appendTo($("body")).get(0);
+          d.href = drawingCanvas.toDataURL('image/jpeg');
+          d.download = "MyImage.jpg";
+        },
+      },'download');
+      gui.add({
+        clear: function(){
           resetSectors();
-        });
-        gui.add(options, 'strokeSize', 1, 10);
-        gui.add(options, 'drawSections').onFinishChange(function() {
-          resetSectors();
-        });
-        gui.addColor(options, 'strokeColor');
-        gui.addColor(options, 'backgroundColor');
-        gui.add(options, 'renderStyle', { HsL: 0, Hsl: 1, ColorArray: 2, StrokeColor: 3, UniColorSector: 4 } ).onFinishChange(function() {
-          options.renderStyle = parseInt(options.renderStyle);
-        });
-        gui.add({
-          download: function(){
-            // TODO
-            var d = $("<a />").appendTo($("body")).get(0);
-            d.href = drawingCanvas.toDataURL('image/jpeg');
-            d.download = "MyImage.jpg";
-          },
-        },'download');
-        gui.add({
-          clear: function(){
-            resetSectors();
-            drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-          },
-        },'clear');
+          drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        },
+      },'clear');
     }
 
     function resetSectors() {
@@ -149,6 +154,8 @@
       bgCtx.fillStyle = options.spineColor;
 
       sectors = [];
+      center.x += options.offsetX;
+      center.y += options.offsetY;
       sectorAngle = (360 / options.spineCount).toRad();
 
       console.time("creating and adding sectors");
