@@ -47,7 +47,7 @@
         drawingCanvas.width  = $(window).width();
         drawingCanvas.height = $(window).height();
 
-        center = new Victor(200, 200);//bgCanvas.width / 2, bgCanvas.height / 2);
+        center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
     }
 
     function run() {
@@ -116,6 +116,7 @@
     function registerDatGuiElements() {
 
       var gui = new dat.GUI();
+      gui.remember(options);
       gui.add(options, 'spineCount');
       gui.add(options, 'offsetX');
       gui.add(options, 'offsetY');
@@ -128,7 +129,12 @@
       });
       gui.addColor(options, 'strokeColor');
       gui.addColor(options, 'backgroundColor');
-      gui.add(options, 'renderStyle', { HsL: 0, Hsl: 1, ColorArray: 2, StrokeColor: 3 } ).onFinishChange(function() {
+      gui.add(options, 'renderStyle', { HsL: 0,
+                                        Hsl: 1,
+                                        ColorArray: 2,
+                                        perSection: 3,
+                                        relative2mouse: 4,
+                                        StrokeColor: 5 } ).onFinishChange(function() {
         options.renderStyle = parseInt(options.renderStyle);
       });
       gui.add({
@@ -175,9 +181,10 @@
 
       var pos, hue, v,
           sectorId, sector,
-          sectorOverId = Math.min(options.spineCount - 1,
-                                  Math.floor(((angleOffset / (Math.PI * 2)) * options.spineCount))),
-          sectorOver = sectors[sectorOverId];
+          sectorOverId = Math.min(options.spineCount - 1, Math.floor(((angleOffset / (Math.PI * 2)) * options.spineCount))),
+          sectorOver = sectors[sectorOverId],
+          sectorAngleDeg = (360 / options.spineCount);
+
       for(var i = 0; i < options.spineCount; i++){
         sector  = sectors[i];
         sectorId = sector.getId();
@@ -198,14 +205,17 @@
           case 2:
             drawingCtx.fillStyle = options.sectorColors[sectorId];
             break;
+          case 3:
+            hue = Math.floor( angleOffset.toDeg() / sectorAngleDeg) * sectorAngleDeg;
+            v = 50;
+            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+            break;
           case 4:
-            // TODO buggy. wrong colors.
-            // meant to be separating sectors by color
             hue = (sectorId / (options.spineCount-1)) * 360;
             v = 50;
             drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
             break;
-          default:
+          case 5:
             drawingCtx.fillStyle = options.strokeColor;
             break;
         }
