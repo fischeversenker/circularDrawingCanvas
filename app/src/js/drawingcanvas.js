@@ -117,19 +117,25 @@
 
       var gui = new dat.GUI();
       gui.remember(options);
-      gui.add(options, 'spineCount');
-      gui.add(options, 'offsetX');
-      gui.add(options, 'offsetY');
-      gui.add({reset: function() {
-        resetSectors();
-      }}, 'reset');
-      gui.add(options, 'strokeSize', 1, 10);
-      gui.add(options, 'drawSections').onFinishChange(function() {
+      var bgFolder = gui.addFolder('Background');
+      var fgFolder = gui.addFolder('Foreground');
+      bgFolder.add(options, 'spineCount').onChange(function() {
         resetSectors();
       });
-      gui.addColor(options, 'strokeColor');
-      gui.addColor(options, 'backgroundColor');
-      gui.add(options, 'renderStyle', { HsL: 0,
+      bgFolder.add(options, 'offsetX', -(bgCanvas.width / 2), (bgCanvas.width / 2)).onChange(function() {
+        resetSectors();
+      });
+      bgFolder.add(options, 'offsetY', -(bgCanvas.height / 2), (bgCanvas.height / 2)).onChange(function() {
+        resetSectors();
+      });
+      bgFolder.add(options, 'drawSections').onFinishChange(function() {
+        resetSectors();
+      });
+      bgFolder.addColor(options, 'backgroundColor');
+      bgFolder.open();
+      fgFolder.add(options, 'strokeSize', 1, 10);
+      fgFolder.addColor(options, 'strokeColor');
+      fgFolder.add(options, 'renderStyle', { HsL: 0,
                                         Hsl: 1,
                                         ColorArray: 2,
                                         perSection: 3,
@@ -137,6 +143,10 @@
                                         StrokeColor: 5 } ).onFinishChange(function() {
         options.renderStyle = parseInt(options.renderStyle);
       });
+      fgFolder.add({opacity: 1}, 'opacity', 0.0, 1.0).onChange(function(v) {
+        $(drawingCanvas).css('opacity', v);
+      });
+      fgFolder.open();
       gui.add({
         download: function(){
           // TODO
@@ -160,8 +170,8 @@
       bgCtx.fillStyle = options.spineColor;
 
       sectors = [];
-      center.x += options.offsetX;
-      center.y += options.offsetY;
+      center.x = (bgCanvas.width / 2) + options.offsetX;
+      center.y = (bgCanvas.height / 2) + options.offsetY;
       sectorAngle = (360 / options.spineCount).toRad();
 
       console.time("creating and adding sectors");
