@@ -95,7 +95,7 @@
             drawStrokeAt(new Victor(e.offsetX, e.offsetY));
           }
         });
-        $(drawingCanvas).on('mouseup', function(e) {
+        $(window).on('mouseup', function(e) {
           drawing = false;
         });
 
