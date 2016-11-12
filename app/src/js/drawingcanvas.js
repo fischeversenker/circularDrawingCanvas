@@ -14,7 +14,8 @@
 
     // states
     var running = false,
-        drawing = false;
+        drawing = false,
+        history = new cHistory(drawingCtx);
 
     // etc
     var center,
@@ -85,6 +86,7 @@
         // maybe add touch support?
         $(drawingCanvas).on('mousedown', function(e) {
           if(running) {
+            history.saveState();
             drawing = true;
             drawStrokeAt(new Victor(e.offsetX, e.offsetY));
           }
@@ -99,6 +101,13 @@
           drawing = false;
         });
 
+        //bind keypress for ctrl->z and ctrl->y
+        $(document).on("keypress", function(e) {
+            if (e.ctrlKey && e.keyCode == 26)
+                history.undo();
+            else if (e.ctrlKey && e.keyCode == 25)
+                history.redo();
+        });
 
         //download handler
         $(window).resize(function() {
@@ -150,17 +159,33 @@
       gui.add({
         download: function(){
           // TODO
-          var d = $("<a />").appendTo($("body")).get(0);
-          d.href = drawingCanvas.toDataURL('image/jpeg');
-          d.download = "MyImage.jpg";
         },
       },'download');
+      //Dirty hack to replace the download button with a link
+      //@todo $link needs a bit css
+      var $donwloadParent = $(".dg .cr.function .property-name");
+      var $link = $('<a>');
+      $link.html('Download');
+      $link.on("click", function() {
+        $link.get(0).href = drawingCanvas.toDataURL('image/jpeg');
+        $link.get(0).download = "MyImage.jpg";
+      });
+      $donwloadParent.html($link);
+
       gui.add({
         clear: function(){
           resetSectors();
           drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
         },
       },'clear');
+
+      var newsFolder = gui.addFolder('News');
+      newsFolder.add({ Undo:function() {
+          history.undo();
+      }}, "Undo");
+      newsFolder.add({ Redo:function() {
+          history.redo();
+      }}, "Redo");
     }
 
     function resetSectors() {
