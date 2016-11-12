@@ -14,7 +14,8 @@
 
     // states
     var running = false,
-        drawing = false;
+        drawing = false,
+        history = new cHistory(drawingCtx);
 
     // etc
     var center,
@@ -52,6 +53,7 @@
 
     function run() {
       resetSectors();
+      history.saveState();
       running = true;
     }
 
@@ -85,6 +87,7 @@
         // maybe add touch support?
         $(drawingCanvas).on('mousedown', function(e) {
           if(running) {
+              history.saveState();
             drawing = true;
             drawStrokeAt(new Victor(e.offsetX, e.offsetY));
           }
@@ -158,8 +161,8 @@
       var $link = $('<a>');
       $link.html('Download');
       $link.on("click", function() {
-          $link.get(0).href = drawingCanvas.toDataURL('image/jpeg');
-          $link.get(0).download = "MyImage.jpg";
+        $link.get(0).href = drawingCanvas.toDataURL('image/jpeg');
+        $link.get(0).download = "MyImage.jpg";
       });
       $donwloadParent.html($link);
 
@@ -169,6 +172,21 @@
           drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
         },
       },'clear');
+
+      var newsFolder = gui.addFolder('News');
+      newsFolder.add({ Undo:function() {
+          history.undo();
+      }}, "Undo");
+      newsFolder.add({ Redo:function() {
+          history.redo();
+      }}, "Redo");
+      //bind keypress for ctrl->z and ctrl->y
+      $(document).on("keypress", function(e) {
+          if (e.ctrlKey && e.keyCode == 26)
+              history.undo();
+          else if (e.ctrlKey && e.keyCode == 25)
+              history.redo();
+      })
     }
 
     function resetSectors() {
