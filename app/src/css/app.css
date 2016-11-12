@@ -10,18 +10,11 @@ html {
 }
 canvas {
   position: absolute;
+  cursor: crosshair;
 }
-#drawer {
-  position: relative;
-  width: 500px;
-  height: 300px;
-}
-#options {
+#erase-preview {
   position: absolute;
-  bottom: 5%;
-  right: 5%;
-  width: 200px;
-  height: 50px;
-  padding: 13px;
-  background-color: rgba(200, 200, 200, 0.7);
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 1px solid #ffffff;
+  pointer-events: none;
 }

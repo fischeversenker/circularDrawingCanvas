@@ -14,7 +14,7 @@
 
     // states
     var running = false,
-        drawing = false,
+        touching = false,
         history = new cHistory(drawingCtx);
 
     // etc
@@ -32,7 +32,9 @@
       drawSections:     true,
       renderStyle:      0,
       offsetX:          0,
-      offsetY:          0
+      offsetY:          0,
+      eraseMode:        false,
+      eraseRadius:      50,
     };
 
     init();
@@ -56,9 +58,9 @@
       running = true;
     }
 
-    function makeColorArray(mode) {
+    function makeColorArray(m) {
         //generate color array
-        switch(1) {
+        switch(m) {
             case 0:
             //random colors
             for(var i = 0; i < 40; i++) {
@@ -87,18 +89,34 @@
         $(drawingCanvas).on('mousedown', function(e) {
           if(running) {
             history.saveState();
-            drawing = true;
-            drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+            touching = true;
+            if(!options.eraseMode) {
+              drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+            } else {
+              eraseAt(new Victor(e.offsetX, e.offsetY));
+            }
           }
         });
         $(drawingCanvas).on('mousemove', function(e) {
-          if(running && drawing) {
+          if(running && touching) {
             e.preventDefault();
-            drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+            if(!options.eraseMode) {
+              drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+            } else {
+              eraseAt(new Victor(e.offsetX, e.offsetY));
+            }
+          }
+          if(options.eraseMode) {
+            $("#erase-preview").css({
+              top: e.offsetY - options.eraseRadius,
+              left: e.offsetX - options.eraseRadius,
+              width: options.eraseRadius * 2,
+              height: options.eraseRadius * 2,
+            });
           }
         });
         $(window).on('mouseup', function(e) {
-          drawing = false;
+          touching = false;
         });
 
         //bind keypress for ctrl->z and ctrl->y
@@ -142,6 +160,7 @@
       });
       bgFolder.addColor(options, 'backgroundColor');
       bgFolder.open();
+
       fgFolder.add(options, 'strokeSize', 1, 10);
       fgFolder.addColor(options, 'strokeColor');
       fgFolder.add(options, 'renderStyle', { HsL: 0,
@@ -155,6 +174,14 @@
       fgFolder.add({opacity: 1}, 'opacity', 0.0, 1.0).onChange(function(v) {
         $(drawingCanvas).css('opacity', v);
       });
+      fgFolder.add(options, 'eraseMode').onChange(function(v) {
+        if($("#erase-preview").length === 0){
+          $("<div id='erase-preview' />").appendTo($drawer);
+        }
+        if(v) $("#erase-preview").show();
+        else $("#erase-preview").hide();
+      });
+      fgFolder.add(options, 'eraseRadius', 1, 100);
       fgFolder.open();
       gui.add({
         download: function(){
@@ -206,6 +233,16 @@
         sectors.push(sector);
       }
       console.timeEnd("creating and adding sectors");
+    }
+
+    function eraseAt(pos) {
+      var relPos;
+      for(var i = 0; i < options.spineCount; i++){
+        relPos = pos.clone().subtract(center);
+        relPos.rotate(sectorAngle * i);
+        relPos.add(center);
+        drawingCtx.clearRect(relPos.x - options.eraseRadius, relPos.y - options.eraseRadius, options.eraseRadius * 2, options.eraseRadius * 2);
+      }
     }
 
     function drawStrokeAt(origPos) {
