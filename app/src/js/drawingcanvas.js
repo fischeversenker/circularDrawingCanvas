@@ -1,15 +1,14 @@
 (function($) {
   "use strict";
 
-  $(function() {
     var DEVELOPMENT = false;
 
     // UI Elements
-    var $drawer = $("#drawer");
-    var bgCanvas = $("<canvas />").appendTo($drawer).get(0);
-    var bgCtx = bgCanvas.getContext("2d");
-    var drawingCanvas = $("<canvas/>").appendTo($drawer).get(0);
-    var drawingCtx = drawingCanvas.getContext("2d");
+    var $drawer;
+    var bgCanvas;
+    var bgCtx;
+    var drawingCanvas;
+    var drawingCtx;
 
 
     // states
@@ -23,17 +22,85 @@
         sectorAngle;
 
     var options = {
-      spineCount:       64,
-      spineColor:       "#ffffff",
-      strokeColor:      "#ffffff",
-      strokeSize:       2,
-      backgroundColor:  "#000000",
-      sectorColors:     [],
-      drawSections:     true,
-      renderStyle:      0,
-      offsetX:          0,
-      offsetY:          0
+        spineCount:       64,
+        spineColor:       "#ffffff",
+        strokeColor:      "#ffffff",
+        strokeSize:       2,
+        backgroundColor:  "#000000",
+        sectorColors:     [],
+        drawSections:     true,
+        renderStyle:      0,
+        offsetX:          0,
+        offsetY:          0
     };
+
+
+    var ToolManager = {
+        _tools: [],
+        _toolHash: [],
+        _activeTool: -1,
+
+        enable() {
+            if (this._activeTool > -1) {
+                this._tools[this._activeTool].enable();
+            }
+        },
+        disable() {
+            if (this._activeTool > -1)
+                this._tools[this._activeTool].disable();
+        },
+        changeTool(toolNameOrID) {
+            if (typeof toolNameOrID === "string")
+                toolNameOrID = this._toolHash.indexOf(toolNameOrID);
+
+            if (typeof toolNameOrID === "number" && toolNameOrID < this._tools.length) {
+                //change tool
+                this.disable();
+                this._activeTool = toolNameOrID;
+                this.enable();
+            }
+        },
+        getToolNames() {
+            return this._toolHash.slice(0);
+        },
+        registerTool: function(toolClass) {
+            var curr = toolClass.prototype;
+            while (curr) {
+                if (toolClass.prototype instanceof Tool) {
+                    this._tools.push(new toolClass());
+                    this._toolHash.push(toolClass.name);
+                    return;
+                }
+                curr = curr.prototype || null;
+            }
+            console.error("Your Tool must extend Tool");
+        },
+
+    };
+
+    class Tool {
+        constructor() {}
+        getContext() {
+            return drawingCtx;
+        }
+        getHistory() {
+            return history;
+        }
+        enable() {}
+        disable() {}
+    }
+
+
+
+  $(function() {
+    var DEVELOPMENT = false;
+
+    // UI Elements
+    $drawer = $("#drawer");
+    bgCanvas = $("<canvas />").appendTo($drawer).get(0);
+    bgCtx = bgCanvas.getContext("2d");
+    drawingCanvas = $("<canvas/>").appendTo($drawer).get(0);
+    drawingCtx = drawingCanvas.getContext("2d");
 
     init();
     registerEventListeners();
@@ -42,13 +109,14 @@
     run();
 
     function init() {
-
         bgCanvas.width  = $(window).width();
         bgCanvas.height = $(window).height();
         drawingCanvas.width  = $(window).width();
         drawingCanvas.height = $(window).height();
 
         center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
+
+        ToolManager.changeTool("Brush");
     }
 
     function run() {
@@ -84,22 +152,22 @@
     function registerEventListeners() {
 
         // maybe add touch support?
-        $(drawingCanvas).on('mousedown', function(e) {
-          if(running) {
-            history.saveState();
-            drawing = true;
-            drawStrokeAt(new Victor(e.offsetX, e.offsetY));
-          }
-        });
-        $(drawingCanvas).on('mousemove', function(e) {
-          if(running && drawing) {
-            e.preventDefault();
-            drawStrokeAt(new Victor(e.offsetX, e.offsetY));
-          }
-        });
-        $(window).on('mouseup', function(e) {
-          drawing = false;
-        });
+        // $(drawingCanvas).on('mousedown', function(e) {
+        //   if(running) {
+        //     history.saveState();
+        //     drawing = true;
+        //     drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+        //   }
+        // });
+        // $(drawingCanvas).on('mousemove', function(e) {
+        //   if(running && drawing) {
+        //     e.preventDefault();
+        //     drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+        //   }
+        // });
+        // $(window).on('mouseup', function(e) {
+        //   drawing = false;
+        // });
 
         //bind keypress for ctrl->z and ctrl->y
         $(document).on("keypress", function(e) {
@@ -295,7 +363,44 @@
         getId: _getId,
       };
     }
+
   });
+    class Brush extends Tool {
+        constructor() {
+            super();
+            this.drawing = false;
+        }
+        enable() {
+            var ctx = this.getContext();
+            // maybe add touch support?
+            ctx.canvas.addEventListener('mousedown', this.start.bind(this));
+            ctx.canvas.addEventListener('mousemove', this.stroke.bind(this));
+            ctx.canvas.addEventListener('mouseup', this.stop.bind(this));
+            ctx.canvas.addEventListener('mouseout', this.stop.bind(this));
+        }
+        disable() {
+            var ctx = this.getContext();
+            ctx.canvas.removeEventListener('mousedown', this.start);
+            ctx.canvas.addEventListener('mousemove', this.stroke);
+            ctx.canvas.addEventListener('mouseup', this.stop);
+            ctx.canvas.addEventListener('mouseout', this.stop);
+        }
+        start() {
+            if(running) {
+               // this.getHistory().saveState();
+                this.drawing = true;
+                drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+            }}
+        stroke() {
+            if(running && this.drawing) {
+                e.preventDefault();
+                drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+            }}
+        stop() {
+            this.drawing = false;
+        }
+    }
+    ToolManager.registerTool(Brush);
 })($);
 
 /** Converts numeric degrees to radians */
