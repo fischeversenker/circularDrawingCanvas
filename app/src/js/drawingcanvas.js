@@ -53,7 +53,6 @@
 
     function run() {
       resetSectors();
-      history.saveState();
       running = true;
     }
 
@@ -87,7 +86,7 @@
         // maybe add touch support?
         $(drawingCanvas).on('mousedown', function(e) {
           if(running) {
-              history.saveState();
+            history.saveState();
             drawing = true;
             drawStrokeAt(new Victor(e.offsetX, e.offsetY));
           }
@@ -102,6 +101,13 @@
           drawing = false;
         });
 
+        //bind keypress for ctrl->z and ctrl->y
+        $(document).on("keypress", function(e) {
+            if (e.ctrlKey && e.keyCode == 26)
+                history.undo();
+            else if (e.ctrlKey && e.keyCode == 25)
+                history.redo();
+        });
 
         //download handler
         $(window).resize(function() {
@@ -180,13 +186,6 @@
       newsFolder.add({ Redo:function() {
           history.redo();
       }}, "Redo");
-      //bind keypress for ctrl->z and ctrl->y
-      $(document).on("keypress", function(e) {
-          if (e.ctrlKey && e.keyCode == 26)
-              history.undo();
-          else if (e.ctrlKey && e.keyCode == 25)
-              history.redo();
-      })
     }
 
     function resetSectors() {
