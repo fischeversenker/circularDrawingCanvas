@@ -150,11 +150,19 @@
       gui.add({
         download: function(){
           // TODO
-          var d = $("<a />").appendTo($("body")).get(0);
-          d.href = drawingCanvas.toDataURL('image/jpeg');
-          d.download = "MyImage.jpg";
         },
       },'download');
+      //Dirty hack to replace the download button with a link
+      //@todo $link needs a bit css
+      var $donwloadParent = $(".dg .cr.function .property-name");
+      var $link = $('<a>');
+      $link.html('Download');
+      $link.on("click", function() {
+          $link.get(0).href = drawingCanvas.toDataURL('image/jpeg');
+          $link.get(0).download = "MyImage.jpg";
+      });
+      $donwloadParent.html($link);
+
       gui.add({
         clear: function(){
           resetSectors();
