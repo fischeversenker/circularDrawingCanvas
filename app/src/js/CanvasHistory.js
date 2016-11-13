@@ -2,7 +2,7 @@
 	"use strict";
 
 	class History {
-		constructor(ctx, cap = 5) {
+		constructor(ctx, cap = 1000) {
 			this.undoStack = [];
 			this.redoStack = [];
 			this.ctx = ctx;
