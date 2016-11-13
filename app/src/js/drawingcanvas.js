@@ -121,7 +121,7 @@ var CircularDrawing = (function (global) {
       ctx.save();
       ctx.translate(center.x, center.y);
       for(sector = 0; sector < options.spineCount; sector++){
-        color = this.getColor();
+        color = this._getColor(sector);
         ctx.fillStyle = color;
         ctx.strokeStyle = color;
 
@@ -130,7 +130,7 @@ var CircularDrawing = (function (global) {
       }
       ctx.restore();
     },
-    getColor() {
+    _getColor(i) {
       var hue = global.mouse.angle * (180 / Math.PI);//  ((angleOffset + sectorAngle * i) / (Math.PI * 2)) * 360;
       var v = Math.min(100, Math.sqrt(Math.pow(global.mouse.pos.x, 2) + Math.pow(global.mouse.pos.y, 2)) / 4);
 
@@ -146,6 +146,7 @@ var CircularDrawing = (function (global) {
           return options.sectorColors[1];
           break;
         case 3:
+          //fixme needs the sector id
           var sectorAngle = 360 / options.spineCount;
           hue = (Math.floor( (global.mouse.angle + sectorAngle * i) / sectorAngle) * sectorAngle).toDeg();
           v = 50;
@@ -193,7 +194,7 @@ var CircularDrawing = (function (global) {
     makeColorArray(1);
 
     ToolManager.init(toolsCanvas);
-    ToolManager.changeTool("Brush");
+    ToolManager.changeTool("Line");
 
     run();
   });
