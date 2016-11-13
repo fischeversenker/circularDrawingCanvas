@@ -20,7 +20,8 @@
     // etc
     var center,
         sectors = [],
-        sectorAngle;
+        sectorAngle,
+        gui;
 
     var options = {
       spineCount:       64,
@@ -35,6 +36,13 @@
       offsetY:          0,
       eraseMode:        false,
       eraseRadius:      50,
+      colorRadius:      150,
+      generateRandomPoints: false,
+      randomPointInterval: 200,
+      randomPointIntervalId: -1,
+      randomPointsCount: 0,
+      saveEvery: 30,
+      saveAsTimelapse: false,
     };
 
     init();
@@ -83,6 +91,14 @@
         }
     }
 
+    function generateRandomPoint(){
+      var point = new Victor(0,0);
+      point.x = Math.random()*drawingCanvas.width;
+      point.y = Math.random()*drawingCanvas.height;
+      options.randomPointsCount++;
+      return point;
+    }
+
     function registerEventListeners() {
 
         // maybe add touch support?
@@ -90,6 +106,7 @@
           if(running) {
             history.saveState();
             touching = true;
+            gui.close();
             if(!options.eraseMode) {
               drawStrokeAt(new Victor(e.offsetX, e.offsetY));
             } else {
@@ -117,6 +134,7 @@
         });
         $(window).on('mouseup', function(e) {
           touching = false;
+          gui.open();
         });
 
         //bind keypress for ctrl->z and ctrl->y
@@ -142,7 +160,7 @@
 
     function registerDatGuiElements() {
 
-      var gui = new dat.GUI();
+      gui = new dat.GUI();
       gui.remember(options);
       var bgFolder = gui.addFolder('Background');
       var fgFolder = gui.addFolder('Foreground');
@@ -168,9 +186,11 @@
                                         ColorArray: 2,
                                         perSection: 3,
                                         relative2mouse: 4,
-                                        StrokeColor: 5 } ).onFinishChange(function() {
+                                        StrokeColor: 5,
+                                        SaturationChange: 6} ).onFinishChange(function() {
         options.renderStyle = parseInt(options.renderStyle);
       });
+      fgFolder.add(options, 'colorRadius', 50, 250);
       fgFolder.add({opacity: 1}, 'opacity', 0.0, 1.0).onChange(function(v) {
         $(drawingCanvas).css('opacity', v);
       });
@@ -182,6 +202,27 @@
         else $("#erase-preview").hide();
       });
       fgFolder.add(options, 'eraseRadius', 1, 100);
+      fgFolder.add(options, 'randomPointInterval', 1, 2000);
+      fgFolder.add(options, 'generateRandomPoints').listen().onFinishChange(function(v){
+        if(v){
+          options.randomPointIntervalId = window.setInterval(function(){
+            if(options.saveAsTimelapse &&
+               options.randomPointsCount > 0 &&
+               Math.floor(options.randomPointsCount % options.saveEvery) === 0) {
+              // clicks the download button every options.saveEvery random points
+              $('body > div.dg.ac > div > ul > li:nth-child(4) > div > span > a').click();
+            }
+            drawStrokeAt(generateRandomPoint());
+          }, options.randomPointInterval);
+        } else {
+          if(options.randomPointIntervalId > -1) {
+            clearInterval(options.randomPointIntervalId);
+          }
+        }
+      });
+      options.generateRandomPoints = false;
+      fgFolder.add(options, 'saveEvery', 50, 1000);
+      fgFolder.add(options, 'saveAsTimelapse');
       fgFolder.open();
       gui.add({
         download: function(){
@@ -193,15 +234,20 @@
       var $donwloadParent = $(".dg .cr.function .property-name");
       var $link = $('<a>');
       $link.html('Download');
-      $link.on("click", function() {
-        $link.get(0).href = drawingCanvas.toDataURL('image/jpeg');
-        $link.get(0).download = "MyImage.jpg";
+      $link.on("click", function(e) {
+        $link.get(0).href = drawingCanvas.toDataURL('image/png');
+        var filename = options.generateRandomPoints ? options.randomPointIntervalId + "-" + options.randomPointsCount + ".png" : "MyImage.png";
+        drawingCanvas.toBlob(function(blob) {
+          saveAs(blob, filename);
+        });
+          // $link.get(0).download = filename;
       });
       $donwloadParent.html($link);
 
       gui.add({
         clear: function(){
           resetSectors();
+          options.randomPointsCount = 0;
           drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
         },
       },'clear');
@@ -251,7 +297,7 @@
       var relPos = origPos.clone().subtract(center);
       var angleOffset = (Math.atan2(relPos.y, relPos.x) + Math.PI);
 
-      var pos, hue, v,
+      var pos, hue, l, s,
           sectorId, sector,
           sectorOverId = Math.min(options.spineCount - 1, Math.floor(((angleOffset / (Math.PI * 2)) * options.spineCount))),
           sectorOver = sectors[sectorOverId],
@@ -266,10 +312,12 @@
 
         // diff drawing methods
         hue = (angleOffset / (Math.PI * 2)) * 360;
-        v = Math.min(100, Math.sqrt(Math.pow(pos.x, 2) + Math.pow(pos.y, 2)) / 4);
+        var diagonalVic = new Victor($(window).width(), $(window).height());
+        var diag = diagonalVic.length();
+        l = Math.min(100, pos.length() / 4);
         switch(options.renderStyle) {
           case 0:
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+            drawingCtx.fillStyle = 'hsl('+ hue +', '+ '100%, '+ l + '%)';
             break;
           case 1:
             drawingCtx.fillStyle = 'hsl('+ hue +', 100%, 50%)';
@@ -279,16 +327,21 @@
             break;
           case 3:
             hue = Math.floor( angleOffset.toDeg() / sectorAngleDeg) * sectorAngleDeg;
-            v = 50;
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+            l = 50;
+            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ l +'%)';
             break;
           case 4:
             hue = (sectorId / (options.spineCount-1)) * 360;
-            v = 50;
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+            l = 50;
+            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ l +'%)';
             break;
           case 5:
             drawingCtx.fillStyle = options.strokeColor;
+            break;
+          case 6:
+            l = Math.min(100, options.colorRadius * pos.length() / (diag / 2));
+            // l = 100 * pos.length() / (diag / 2);
+            drawingCtx.fillStyle = 'hsl('+ hue +', ' + '100%, '+ l + '%)';
             break;
         }
 
