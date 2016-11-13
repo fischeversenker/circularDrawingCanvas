@@ -5,6 +5,7 @@
     constructor() {
       super();
       this.drawing = false;
+      this.pos;
     }
     enable() {}
     disable() {}
@@ -13,23 +14,26 @@
       console.log("brush go");
       this.getHistory().saveState();
       this.drawing = true;
-      global.drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+      this.pos = pos;
+      global.cRenderer.render(global.drawingCtx, this.draw.bind(this));
     }
 
     onMouseMove(pos, e) {
       if (this.drawing) {
-        global.drawStrokeAt(new Victor(e.offsetX, e.offsetY));
+        this.pos = pos;
+        global.cRenderer.render(global.drawingCtx, this.draw.bind(this));
       }
     }
     onMouseUp(pos, e) {
       this.drawing = false;
     }
     draw(ctx) {
+      var size = global.options.strokeSize;
       ctx.beginPath();
       ctx.arc(
-         pos.x - options.strokeSize,
-         pos.y - options.strokeSize,
-         options.strokeSize, 0, 2*Math.PI);
+        this.pos.x - size,
+        this.pos.y - size,
+        size, 0, 2 * Math.PI);
       ctx.fill();
     }
   }

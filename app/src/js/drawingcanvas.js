@@ -193,7 +193,7 @@ var CircularDrawing = (function (global) {
     makeColorArray(1);
 
     ToolManager.init(toolsCanvas);
-    ToolManager.changeTool("Line");
+    ToolManager.changeTool("Brush");
 
     run();
   });
@@ -497,6 +497,7 @@ var CircularDrawing = (function (global) {
   global.class.Tool = Tool;
   global.ToolManager = ToolManager;
   global.drawStrokeAt = drawStrokeAt;
+  global.options = options;
   return global;
 })({});
 
