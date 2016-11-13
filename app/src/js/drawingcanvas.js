@@ -111,7 +111,6 @@
     run();
 
     function init() {
-
         bgCanvas.width  = $(window).width();
         bgCanvas.height = $(window).height();
         drawingCanvas.width  = $(window).width();
@@ -207,8 +206,9 @@
           // center.y = bgCanvas.height / 2;
           // run();
         });
-}
+    }
 
+  });
     function registerDatGuiElements() {
 
       var gui = new dat.GUI();
@@ -337,28 +337,28 @@
         hue = (angleOffset / (Math.PI * 2)) * 360;
         v = Math.min(100, Math.sqrt(Math.pow(pos.x, 2) + Math.pow(pos.y, 2)) / 4);
         switch(options.renderStyle) {
-          case 0:
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
-            break;
-          case 1:
-            drawingCtx.fillStyle = 'hsl('+ hue +', 100%, 50%)';
-            break;
-          case 2:
-            drawingCtx.fillStyle = options.sectorColors[sectorId];
-            break;
-          case 3:
-            hue = Math.floor( angleOffset.toDeg() / sectorAngleDeg) * sectorAngleDeg;
-            v = 50;
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
-            break;
-          case 4:
-            hue = (sectorId / (options.spineCount-1)) * 360;
-            v = 50;
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
-            break;
-          case 5:
-            drawingCtx.fillStyle = options.strokeColor;
-            break;
+            case 0:
+                drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+                break;
+            case 1:
+                drawingCtx.fillStyle = 'hsl('+ hue +', 100%, 50%)';
+                break;
+            case 2:
+                drawingCtx.fillStyle = options.sectorColors[sectorId];
+                break;
+            case 3:
+                hue = Math.floor( angleOffset.toDeg() / sectorAngleDeg) * sectorAngleDeg;
+                v = 50;
+                drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+                break;
+            case 4:
+                hue = (sectorId / (options.spineCount-1)) * 360;
+                v = 50;
+                drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ v +'%)';
+                break;
+            case 5:
+                drawingCtx.fillStyle = options.strokeColor;
+                break;
         }
 
         pos.add(center);
@@ -402,7 +402,6 @@
       };
     }
 
-  });
     class Brush extends Tool {
         constructor() {
             super();
@@ -423,18 +422,19 @@
             ctx.canvas.addEventListener('mouseup', this.stop);
             ctx.canvas.addEventListener('mouseout', this.stop);
         }
-        start() {
+        start(e) {
             if(running) {
                // this.getHistory().saveState();
                 this.drawing = true;
                 drawStrokeAt(new Victor(e.offsetX, e.offsetY));
-            }}
-        stroke() {
+            }
+        }
+        stroke(e) {
             if(running && this.drawing) {
-                e.preventDefault();
                 drawStrokeAt(new Victor(e.offsetX, e.offsetY));
-            }}
-        stop() {
+            }
+        }
+        stop(e) {
             this.drawing = false;
         }
     }
