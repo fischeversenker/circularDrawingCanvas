@@ -9,20 +9,28 @@
     enable() {}
     disable() {}
 
-    onMouseDown(e) {
+    onMouseDown(pos, e) {
+      console.log("brush go");
       this.getHistory().saveState();
       this.drawing = true;
       global.drawStrokeAt(new Victor(e.offsetX, e.offsetY));
     }
 
-    onMouseMove(e) {
+    onMouseMove(pos, e) {
       if (this.drawing) {
         global.drawStrokeAt(new Victor(e.offsetX, e.offsetY));
       }
     }
-
-    onMouseUp(e) {
+    onMouseUp(pos, e) {
       this.drawing = false;
+    }
+    draw(ctx) {
+      ctx.beginPath();
+      ctx.arc(
+         pos.x - options.strokeSize,
+         pos.y - options.strokeSize,
+         options.strokeSize, 0, 2*Math.PI);
+      ctx.fill();
     }
   }
   global.ToolManager.registerTool(Brush);

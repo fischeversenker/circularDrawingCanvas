@@ -1,6 +1,10 @@
 var CircularDrawing = (function (global) {
   "use strict";
 
+  global.mouse = {};
+  global.mouse.pos = new Victor(0, 0);
+  global.mouse.angle = 0;
+  global.mouse.distance = 0;
   var DEVELOPMENT = false;
 
   // UI Elements
@@ -85,21 +89,80 @@ var CircularDrawing = (function (global) {
       }
       console.error("Your Tool must extend Tool");
     },
+    _setMouse(x, y) {
+      global.mouse.pos.x = x;
+      global.mouse.pos.y = y;
+      global.mouse.pos.subtract(center);
+      global.mouse.angle = Math.atan2(global.mouse.pos.x, global.mouse.pos.y);
+      global.mouse.distance = 0;
+      return global.mouse;
+    },
     onMouseDown(e) {
       if (this._activeTool && "onMouseDown" in this._activeTool)
-        this._activeTool.onMouseDown(e);
+        this._activeTool.onMouseDown(this._setMouse(e.offsetX, e.offsetY).pos, e);
     },
     onMouseMove(e) {
       if (this._activeTool && "onMouseMove" in this._activeTool)
-        this._activeTool.onMouseMove(e);
+        this._activeTool.onMouseMove(this._setMouse(e.offsetX, e.offsetY).pos, e);
     },
     onMouseUp(e) {
       if (this._activeTool && "onMouseUp" in this._activeTool)
-        this._activeTool.onMouseUp(e);
+        this._activeTool.onMouseUp(this._setMouse(e.offsetX, e.offsetY).pos, e);
     }
   };
 
+  global.cRenderer = {
 
+    render(ctx, drawFn) {
+      var sectorAngle = (360 / options.spineCount).toRad(),
+          sector,
+          color = "red";
+
+      ctx.save();
+      ctx.translate(center.x, center.y);
+      for(sector = 0; sector < options.spineCount; sector++){
+        color = this.getColor();
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+
+        ctx.rotate(sectorAngle);
+        drawFn(ctx);
+      }
+      ctx.restore();
+    },
+    getColor() {
+      var hue = global.mouse.angle * (180 / Math.PI);//  ((angleOffset + sectorAngle * i) / (Math.PI * 2)) * 360;
+      var v = Math.min(100, Math.sqrt(Math.pow(global.mouse.pos.x, 2) + Math.pow(global.mouse.pos.y, 2)) / 4);
+
+      switch(options.renderStyle) {
+        case 0:
+          return 'hsl('+ hue +', '+'100%, '+ v +'%)';
+          break;
+        case 1:
+          return 'hsl('+ hue +', 100%, 50%)';
+          break;
+        case 2:
+          //fixme needs the sector id
+          return options.sectorColors[1];
+          break;
+        case 3:
+          var sectorAngle = 360 / options.spineCount;
+          hue = (Math.floor( (global.mouse.angle + sectorAngle * i) / sectorAngle) * sectorAngle).toDeg();
+          v = 50;
+          return 'hsl('+ hue +', '+'100%, '+ v +'%)';
+          break;
+        case 4:
+          //fixme needs the sector id
+          hue = (1 / (options.spineCount-1)) * 360;
+          v = 50;
+          return 'hsl('+ hue +', '+'100%, '+ v +'%)';
+          break;
+        case 5:
+          return options.strokeColor;
+          break;
+      }
+    }
+  }
   $(function init() {
     // UI Elements
     $drawer = $("#drawer");
@@ -109,7 +172,7 @@ var CircularDrawing = (function (global) {
     drawingCanvas = $("<canvas/>").appendTo($drawer).get(0);
     drawingCtx = drawingCanvas.getContext("2d");
     toolsCanvas = $("<canvas/>").appendTo($drawer).get(0);
-    toolsCtx = drawingCanvas.getContext("2d");
+    toolsCtx = toolsCanvas.getContext("2d");
 
     bgCanvas.width = $(window).width();
     bgCanvas.height = $(window).height();
@@ -296,7 +359,6 @@ var CircularDrawing = (function (global) {
       }
     }, "Redo");
   }
-
   function resetSectors() {
     bgCtx.fillStyle = options.backgroundColor;
     bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
@@ -316,7 +378,6 @@ var CircularDrawing = (function (global) {
     }
     console.timeEnd("creating and adding sectors");
   }
-
   function eraseAt(pos) {
     var relPos;
     for (var i = 0; i < options.spineCount; i++) {
@@ -326,9 +387,8 @@ var CircularDrawing = (function (global) {
       drawingCtx.clearRect(relPos.x - options.eraseRadius, relPos.y - options.eraseRadius, options.eraseRadius * 2, options.eraseRadius * 2);
     }
   }
-
+  //deprecated
   function drawStrokeAt(origPos) {
-
     // to remember which sector we are in
     var relPos = origPos.clone().subtract(center);
     var angleOffset = (Math.atan2(relPos.y, relPos.x) + Math.PI);
@@ -378,7 +438,6 @@ var CircularDrawing = (function (global) {
       drawingCtx.fillRect(pos.x - options.strokeSize, pos.y - options.strokeSize, options.strokeSize, options.strokeSize);
     }
   }
-
   function getEndPoint(startPoint, i) {
     var eP = startPoint.clone();
     var radAngle = ((Math.PI * 2 / options.spineCount) * i);
