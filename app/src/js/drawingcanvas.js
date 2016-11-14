@@ -1,11 +1,13 @@
 var CircularDrawing = (function (global) {
   "use strict";
 
-  global.mouse = {};
-  global.mouse.pos = new Victor(0, 0);
-  global.mouse.angle = 0;
-  global.mouse.distance = 0;
-  var DEVELOPMENT = false;
+  global.DEVELOPMENT = true;
+  global.log = function(who, ...args) {
+    if (global.DEVELOPMENT)
+      console.log("%c " + who + "->", "background: #222; color: #bada55", ...args);
+  };
+  global.class = {};
+  global.center = new Victor();
 
   // UI Elements
   var $drawer;
@@ -22,8 +24,7 @@ var CircularDrawing = (function (global) {
       history;
 
     // etc
-    var center,
-        sectors = [],
+    var sectors = [],
         sectorAngle,
         gui;
 
@@ -50,128 +51,8 @@ var CircularDrawing = (function (global) {
     };
 
 
-  var ToolManager = {
-    _tools: [],
-    _toolHash: [],
-    _activeTool: null,
-    _activeToolIndex: -1,
 
-    init(toolsCanvas) {
-      toolsCanvas.addEventListener('mousedown', this.onMouseDown.bind(this));
-      toolsCanvas.addEventListener('mousemove', this.onMouseMove.bind(this));
-      window.addEventListener('mouseup', this.onMouseUp.bind(this));
-    },
-    enable() {
-      if (this._activeToolIndex > -1) {
-        this._tools[this._activeToolIndex].enable();
-      }
-    },
-    disable() {
-      if (this._activeToolIndex > -1)
-        this._tools[this._activeToolIndex].disable();
-    },
-    changeTool(toolNameOrID) {
-      if (typeof toolNameOrID === "string")
-        toolNameOrID = this._toolHash.indexOf(toolNameOrID);
 
-      if (typeof toolNameOrID === "number" && toolNameOrID < this._tools.length) {
-        //change tool
-        this.disable();
-        this._activeToolIndex = toolNameOrID;
-        this._activeTool = this._tools[toolNameOrID];
-        this.enable();
-      }
-    },
-    getToolNames() {
-      return this._toolHash.slice(0);
-    },
-    registerTool: function (toolClass) {
-      var curr = toolClass.prototype;
-      while (curr) {
-        if (toolClass.prototype instanceof Tool) {
-          this._tools.push(new toolClass());
-          this._toolHash.push(toolClass.name);
-          return;
-        }
-        curr = curr.prototype || null;
-      }
-      console.error("Your Tool must extend Tool");
-    },
-    _setMouse(x, y) {
-      global.mouse.pos.x = x;
-      global.mouse.pos.y = y;
-      global.mouse.pos.subtract(center);
-      global.mouse.angle = Math.atan2(global.mouse.pos.x, global.mouse.pos.y);
-      global.mouse.distance = 0;
-      return global.mouse;
-    },
-    onMouseDown(e) {
-      if (this._activeTool && "onMouseDown" in this._activeTool)
-        this._activeTool.onMouseDown(this._setMouse(e.offsetX, e.offsetY).pos, e);
-    },
-    onMouseMove(e) {
-      if (this._activeTool && "onMouseMove" in this._activeTool)
-        this._activeTool.onMouseMove(this._setMouse(e.offsetX, e.offsetY).pos, e);
-    },
-    onMouseUp(e) {
-      if (this._activeTool && "onMouseUp" in this._activeTool)
-        this._activeTool.onMouseUp(this._setMouse(e.offsetX, e.offsetY).pos, e);
-    }
-  };
-
-  global.cRenderer = {
-
-    render(ctx, drawFn) {
-      var sectorAngle = (360 / options.spineCount).toRad(),
-          sector,
-          color = "red";
-
-      ctx.save();
-      ctx.translate(center.x, center.y);
-      for(sector = 0; sector < options.spineCount; sector++){
-        color = this._getColor(sector);
-        ctx.fillStyle = color;
-        ctx.strokeStyle = color;
-
-        ctx.rotate(sectorAngle);
-        drawFn(ctx);
-      }
-      ctx.restore();
-    },
-    _getColor(i) {
-      var hue = global.mouse.angle * (180 / Math.PI);//  ((angleOffset + sectorAngle * i) / (Math.PI * 2)) * 360;
-      var v = Math.min(100, Math.sqrt(Math.pow(global.mouse.pos.x, 2) + Math.pow(global.mouse.pos.y, 2)) / 4);
-
-      switch(options.renderStyle) {
-        case 0:
-          return 'hsl('+ hue +', '+'100%, '+ v +'%)';
-          break;
-        case 1:
-          return 'hsl('+ hue +', 100%, 50%)';
-          break;
-        case 2:
-          //fixme needs the sector id
-          return options.sectorColors[1];
-          break;
-        case 3:
-          //fixme needs the sector id
-          var sectorAngle = 360 / options.spineCount;
-          hue = (Math.floor( (global.mouse.angle + sectorAngle * i) / sectorAngle) * sectorAngle).toDeg();
-          v = 50;
-          return 'hsl('+ hue +', '+'100%, '+ v +'%)';
-          break;
-        case 4:
-          //fixme needs the sector id
-          hue = (1 / (options.spineCount-1)) * 360;
-          v = 50;
-          return 'hsl('+ hue +', '+'100%, '+ v +'%)';
-          break;
-        case 5:
-          return options.strokeColor;
-          break;
-      }
-    }
-  }
   $(function init() {
     // UI Elements
     $drawer = $("#drawer");
@@ -195,17 +76,19 @@ var CircularDrawing = (function (global) {
 
     history = new cHistory(drawingCtx);
 
-    center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
+    global.center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
 
     registerEventListeners();
     registerDatGuiElements();
     makeColorArray(1);
 
-    ToolManager.init(toolsCanvas);
-    ToolManager.changeTool("Line");
+    global.ToolManager.init(toolsCanvas);
+    global.cRenderer.init();
+    global.ToolManager.changeTool("Brush");
 
     run();
   });
+
   function run() {
     resetSectors();
     running = true;
@@ -408,8 +291,8 @@ var CircularDrawing = (function (global) {
     bgCtx.fillStyle = options.spineColor;
 
     sectors = [];
-    center.x = (bgCanvas.width / 2) + options.offsetX;
-    center.y = (bgCanvas.height / 2) + options.offsetY;
+    global.center.x = (bgCanvas.width / 2) + options.offsetX;
+    global.center.y = (bgCanvas.height / 2) + options.offsetY;
     sectorAngle = (360 / options.spineCount).toRad();
 
     console.time("creating and adding sectors");
@@ -419,73 +302,6 @@ var CircularDrawing = (function (global) {
       sectors.push(sector);
     }
     console.timeEnd("creating and adding sectors");
-  }
-  function eraseAt(pos) {
-    var relPos;
-    for (var i = 0; i < options.spineCount; i++) {
-      relPos = pos.clone().subtract(center);
-      relPos.rotate(sectorAngle * i);
-      relPos.add(center);
-      drawingCtx.clearRect(relPos.x - options.eraseRadius, relPos.y - options.eraseRadius, options.eraseRadius * 2, options.eraseRadius * 2);
-    }
-  }
-  //deprecated
-  function drawStrokeAt(origPos) {
-    // to remember which sector we are in
-    var relPos = origPos.clone().subtract(center);
-    var angleOffset = (Math.atan2(relPos.y, relPos.x) + Math.PI);
-
-      var pos, hue, l, s,
-          sectorId, sector,
-          sectorOverId = Math.min(options.spineCount - 1, Math.floor(((angleOffset / (Math.PI * 2)) * options.spineCount))),
-          sectorOver = sectors[sectorOverId],
-          sectorAngleDeg = (360 / options.spineCount);
-
-      for(var i = 0; i < options.spineCount; i++){
-        sector  = sectors[i];
-        sectorId = sector.getId();
-        pos = origPos.clone().subtract(center);
-        pos.rotate(sectorAngle * sectorId);
-        angleOffset = (Math.atan2(pos.y, pos.x) + Math.PI);
-
-        // diff drawing methods
-        hue = (angleOffset / (Math.PI * 2)) * 360;
-        var diagonalVic = new Victor($(window).width(), $(window).height());
-        var diag = diagonalVic.length();
-        l = Math.min(100, pos.length() / 4);
-        switch(options.renderStyle) {
-          case 0:
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+ '100%, '+ l + '%)';
-            break;
-          case 1:
-            drawingCtx.fillStyle = 'hsl('+ hue +', 100%, 50%)';
-            break;
-          case 2:
-            drawingCtx.fillStyle = options.sectorColors[sectorId];
-            break;
-          case 3:
-            hue = Math.floor( angleOffset.toDeg() / sectorAngleDeg) * sectorAngleDeg;
-            l = 50;
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ l +'%)';
-            break;
-          case 4:
-            hue = (sectorId / (options.spineCount-1)) * 360;
-            l = 50;
-            drawingCtx.fillStyle = 'hsl('+ hue +', '+'100%, '+ l +'%)';
-            break;
-          case 5:
-            drawingCtx.fillStyle = options.strokeColor;
-            break;
-          case 6:
-            l = Math.min(100, options.colorRadius * pos.length() / (diag / 2));
-            // l = 100 * pos.length() / (diag / 2);
-            drawingCtx.fillStyle = 'hsl('+ hue +', ' + '100%, '+ l + '%)';
-            break;
-        }
-
-      pos.add(center);
-      drawingCtx.fillRect(pos.x - options.strokeSize, pos.y - options.strokeSize, options.strokeSize, options.strokeSize);
-    }
   }
   function getEndPoint(startPoint, i) {
     var eP = startPoint.clone();
@@ -497,14 +313,14 @@ var CircularDrawing = (function (global) {
 
   // angles in radians
   function Sector(id) {
-    var endPoint = getEndPoint(center, id);
+    var endPoint = getEndPoint(global.center, id);
 
     function _drawSpine() {
       if (!options.drawSections) return;
       bgCtx.beginPath();
       bgCtx.lineWidth = "1";
       bgCtx.strokeStyle = options.spineColor;
-      bgCtx.moveTo(center.x, center.y);
+      bgCtx.moveTo(global.center.x, global.center.y);
       // logic for spines missing
       bgCtx.lineTo(endPoint.x, endPoint.y);
       bgCtx.stroke();
@@ -542,10 +358,7 @@ var CircularDrawing = (function (global) {
     enable() {}
     disable() {}
   }
-  global.class = {};
   global.class.Tool = Tool;
-  global.ToolManager = ToolManager;
-  global.drawStrokeAt = drawStrokeAt;
   global.options = options;
   return global;
 })({});
