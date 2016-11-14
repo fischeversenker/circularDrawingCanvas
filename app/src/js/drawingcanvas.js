@@ -1,14 +1,35 @@
 var CircularDrawing = (function (global) {
   "use strict";
-
+  MicroEvent.mixin(global);
   global.DEVELOPMENT = true;
   global.log = function(who, ...args) {
     if (global.DEVELOPMENT)
       console.log("%c " + who + "->", "background: #222; color: #bada55", ...args);
   };
   global.class = {};
+  global.history = null;
   global.center = new Victor();
-
+  global.options = {
+    spineCount:       64,
+    spineColor:       "#ffffff",
+    strokeColor:      "#ffffff",
+    strokeSize:       2,
+    backgroundColor:  "#000000",
+    sectorColors:     [],
+    drawSections:     true,
+    renderStyle:      0,
+    offsetX:          0,
+    offsetY:          0,
+    eraseMode:        false,
+    eraseRadius:      50,
+    colorRadius:      150,
+    generateRandomPoints: false,
+    randomPointInterval: 200,
+    randomPointIntervalId: -1,
+    randomPointsCount: 0,
+    saveEvery: 30,
+    saveAsTimelapse: false,
+  };
   // UI Elements
   var $drawer;
   var bgCanvas;
@@ -20,35 +41,13 @@ var CircularDrawing = (function (global) {
 
   // states
   var running = false,
-      touching = false,
-      history;
+      touching = false;
 
-    // etc
-    var sectors = [],
-        sectorAngle,
-        gui;
+  // etc
+  var sectors = [],
+      sectorAngle,
+      gui;
 
-    var options = {
-      spineCount:       64,
-      spineColor:       "#ffffff",
-      strokeColor:      "#ffffff",
-      strokeSize:       2,
-      backgroundColor:  "#000000",
-      sectorColors:     [],
-      drawSections:     true,
-      renderStyle:      0,
-      offsetX:          0,
-      offsetY:          0,
-      eraseMode:        false,
-      eraseRadius:      50,
-      colorRadius:      150,
-      generateRandomPoints: false,
-      randomPointInterval: 200,
-      randomPointIntervalId: -1,
-      randomPointsCount: 0,
-      saveEvery: 30,
-      saveAsTimelapse: false,
-    };
 
 
 
@@ -74,7 +73,7 @@ var CircularDrawing = (function (global) {
     global.overlayCtx = toolsCtx;
     global.drawingCtx = drawingCtx;
 
-    history = new cHistory(drawingCtx);
+    global.history = new cHistory(drawingCtx);
 
     global.center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
 
@@ -86,6 +85,7 @@ var CircularDrawing = (function (global) {
     global.cRenderer.init();
     global.ToolManager.changeTool("Brush");
 
+    global.trigger('init', new Date());
     run();
   });
 
@@ -99,7 +99,7 @@ var CircularDrawing = (function (global) {
       case 0:
         //random colors
         for (var i = 0; i < 40; i++) {
-          options.sectorColors.push("#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16));
+          global.options.sectorColors.push("#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16));
         }
         break;
       case 1:
@@ -107,9 +107,9 @@ var CircularDrawing = (function (global) {
         var secColor = "#" + Math.min(16777216, Math.floor(Math.random() * 16777216 + 65536)).toString(16);
         for (i = 0; i < 40; i++) {
           if (i < 6) {
-            options.sectorColors.push(firstColor);
+            global.options.sectorColors.push(firstColor);
           } else {
-            options.sectorColors.push(secColor);
+            global.options.sectorColors.push(secColor);
           }
         }
         break;
@@ -121,14 +121,14 @@ var CircularDrawing = (function (global) {
     var point = new Victor(0,0);
     point.x = Math.random()*drawingCanvas.width;
     point.y = Math.random()*drawingCanvas.height;
-    options.randomPointsCount++;
+    global.options.randomPointsCount++;
     return point;
   }
   function registerEventListeners() {
     // maybe add touch support?
     // $(drawingCanvas).on('mousedown', function(e) {
     //   if(running) {
-    //     history.saveState();
+    //     global.history.saveState();
     //     touching = true;
     //     if(!options.eraseMode) {
     //       drawStrokeAt(new Victor(e.offsetX, e.offsetY));
@@ -162,9 +162,9 @@ var CircularDrawing = (function (global) {
     //bind keypress for ctrl->z and ctrl->y
     $(document).on("keypress", function (e) {
       if (e.ctrlKey && e.keyCode == 26)
-        history.undo();
+        global.history.undo();
       else if (e.ctrlKey && e.keyCode == 25)
-        history.redo();
+        global.history.redo();
     });
 
     //download handler
@@ -181,68 +181,70 @@ var CircularDrawing = (function (global) {
   }
   function registerDatGuiElements() {
     gui = new dat.GUI();
-    gui.remember(options);
+    gui.remember(global.options);
     var bgFolder = gui.addFolder('Background');
     var fgFolder = gui.addFolder('Foreground');
-    bgFolder.add(options, 'spineCount').onChange(function () {
+    bgFolder.add(global.options, 'spineCount').onChange(function () {
       resetSectors();
     });
-    bgFolder.add(options, 'offsetX', -(bgCanvas.width / 2), (bgCanvas.width / 2)).onChange(function () {
+    bgFolder.add(global.options, 'offsetX', -(bgCanvas.width / 2), (bgCanvas.width / 2)).onChange(function () {
       resetSectors();
     });
-    bgFolder.add(options, 'offsetY', -(bgCanvas.height / 2), (bgCanvas.height / 2)).onChange(function () {
+    bgFolder.add(global.options, 'offsetY', -(bgCanvas.height / 2), (bgCanvas.height / 2)).onChange(function () {
       resetSectors();
     });
-    bgFolder.add(options, 'drawSections').onFinishChange(function () {
+    bgFolder.add(global.options, 'drawSections').onFinishChange(function () {
       resetSectors();
     });
-    bgFolder.addColor(options, 'backgroundColor');
+    bgFolder.addColor(global.options, 'backgroundColor');
     bgFolder.open();
 
-      fgFolder.add(options, 'strokeSize', 1, 10);
-      fgFolder.addColor(options, 'strokeColor');
-      fgFolder.add(options, 'renderStyle', { HsL: 0,
-                                        Hsl: 1,
-                                        ColorArray: 2,
-                                        perSection: 3,
-                                        relative2mouse: 4,
-                                        StrokeColor: 5,
-                                        SaturationChange: 6} ).onFinishChange(function() {
-        options.renderStyle = parseInt(options.renderStyle);
+    fgFolder.add(global.options, 'strokeSize', 1, 10);
+    fgFolder.addColor(global.options, 'strokeColor');
+    fgFolder.add(global.options, 'renderStyle', {
+                  HsL: 0,
+                  Hsl: 1,
+                  ColorArray: 2,
+                  perSection: 3,
+                  relative2mouse: 4,
+                  StrokeColor: 5,
+                  SaturationChange: 6} )
+      .onFinishChange(function() {
+        global.options.renderStyle = parseInt(global.options.renderStyle);
       });
-      fgFolder.add(options, 'colorRadius', 50, 250);
-      fgFolder.add({opacity: 1}, 'opacity', 0.0, 1.0).onChange(function(v) {
+    fgFolder.add(global.options, 'colorRadius', 50, 250);
+    fgFolder.add({opacity: 1}, 'opacity', 0.0, 1.0).onChange(function(v) {
         $(drawingCanvas).css('opacity', v);
       });
-      fgFolder.add(options, 'eraseMode').onChange(function(v) {
+      fgFolder.add(global.options, 'eraseMode').onChange(function(v) {
         if($("#erase-preview").length === 0){
           $("<div id='erase-preview' />").appendTo($drawer);
         }
         if(v) $("#erase-preview").show();
         else $("#erase-preview").hide();
       });
-      fgFolder.add(options, 'eraseRadius', 1, 100);
-      fgFolder.add(options, 'randomPointInterval', 1, 2000);
-      fgFolder.add(options, 'generateRandomPoints').listen().onFinishChange(function(v){
+      fgFolder.add(global.options, 'eraseRadius', 1, 100);
+      fgFolder.add(global.options, 'randomPointInterval', 1, 2000);
+      fgFolder.add(global.options, 'generateRandomPoints').listen().onFinishChange(function(v){
         if(v){
-          options.randomPointIntervalId = window.setInterval(function(){
-            if(options.saveAsTimelapse &&
-               options.randomPointsCount > 0 &&
-               Math.floor(options.randomPointsCount % options.saveEvery) === 0) {
+          global.options.randomPointIntervalId = window.setInterval(function(){
+            if(global.options.saveAsTimelapse &&
+              global.options.randomPointsCount > 0 &&
+               Math.floor(global.options.randomPointsCount % global.options.saveEvery) === 0) {
               // clicks the download button every options.saveEvery random points
               $('body > div.dg.ac > div > ul > li:nth-child(4) > div > span > a').click();
             }
             drawStrokeAt(generateRandomPoint());
-          }, options.randomPointInterval);
+          }, global.options.randomPointInterval);
         } else {
-          if(options.randomPointIntervalId > -1) {
-            clearInterval(options.randomPointIntervalId);
+          if(global.options.randomPointIntervalId > -1) {
+            clearInterval(global.options.randomPointIntervalId);
           }
         }
       });
-      options.generateRandomPoints = false;
-      fgFolder.add(options, 'saveEvery', 50, 1000);
-      fgFolder.add(options, 'saveAsTimelapse');
+    global.options.generateRandomPoints = false;
+      fgFolder.add(global.options, 'saveEvery', 50, 1000);
+      fgFolder.add(global.options, 'saveAsTimelapse');
       fgFolder.open();
       gui.add({
         download: function(){
@@ -256,7 +258,7 @@ var CircularDrawing = (function (global) {
       $link.html('Download');
       $link.on("click", function(e) {
         $link.get(0).href = drawingCanvas.toDataURL('image/png');
-        var filename = options.generateRandomPoints ? options.randomPointIntervalId + "-" + options.randomPointsCount + ".png" : "MyImage.png";
+        var filename = global.options.generateRandomPoints ? global.options.randomPointIntervalId + "-" + global.options.randomPointsCount + ".png" : "MyImage.png";
         drawingCanvas.toBlob(function(blob) {
           saveAs(blob, filename);
         });
@@ -267,7 +269,7 @@ var CircularDrawing = (function (global) {
       gui.add({
         clear: function(){
           resetSectors();
-          options.randomPointsCount = 0;
+          global.options.randomPointsCount = 0;
           drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
         },
       },'clear');
@@ -275,28 +277,28 @@ var CircularDrawing = (function (global) {
     var newsFolder = gui.addFolder('News');
     newsFolder.add({
       Undo: function () {
-        history.undo();
+        global.history.undo();
       }
     }, "Undo");
     newsFolder.add({
       Redo: function () {
-        history.redo();
+        global.history.redo();
       }
     }, "Redo");
   }
   function resetSectors() {
-    bgCtx.fillStyle = options.backgroundColor;
+    bgCtx.fillStyle = global.options.backgroundColor;
     bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-    if (!options.drawSections) return;
-    bgCtx.fillStyle = options.spineColor;
+    if (!global.options.drawSections) return;
+    bgCtx.fillStyle = global.options.spineColor;
 
     sectors = [];
-    global.center.x = (bgCanvas.width / 2) + options.offsetX;
-    global.center.y = (bgCanvas.height / 2) + options.offsetY;
-    sectorAngle = (360 / options.spineCount).toRad();
+    global.center.x = (bgCanvas.width / 2) + global.options.offsetX;
+    global.center.y = (bgCanvas.height / 2) + global.options.offsetY;
+    sectorAngle = (360 / global.options.spineCount).toRad();
 
     console.time("creating and adding sectors");
-    for (var i = 0; i < options.spineCount; i++) {
+    for (var i = 0; i < global.options.spineCount; i++) {
       var sector = new Sector(i);
       sector.drawSpine();
       sectors.push(sector);
@@ -305,7 +307,7 @@ var CircularDrawing = (function (global) {
   }
   function getEndPoint(startPoint, i) {
     var eP = startPoint.clone();
-    var radAngle = ((Math.PI * 2 / options.spineCount) * i);
+    var radAngle = ((Math.PI * 2 / global.options.spineCount) * i);
     eP.x = Math.cos(radAngle) * 999999;
     eP.y = Math.sin(radAngle) * 999999;
     return eP;
@@ -316,10 +318,10 @@ var CircularDrawing = (function (global) {
     var endPoint = getEndPoint(global.center, id);
 
     function _drawSpine() {
-      if (!options.drawSections) return;
+      if (!global.options.drawSections) return;
       bgCtx.beginPath();
       bgCtx.lineWidth = "1";
-      bgCtx.strokeStyle = options.spineColor;
+      bgCtx.strokeStyle = global.options.spineColor;
       bgCtx.moveTo(global.center.x, global.center.y);
       // logic for spines missing
       bgCtx.lineTo(endPoint.x, endPoint.y);
@@ -353,13 +355,12 @@ var CircularDrawing = (function (global) {
     }
 
     getHistory() {
-      return history;
+      return global.history;
     }
     enable() {}
     disable() {}
   }
   global.class.Tool = Tool;
-  global.options = options;
   return global;
 })({});
 
