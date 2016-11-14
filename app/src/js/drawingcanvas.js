@@ -9,6 +9,7 @@ var CircularDrawing = (function (global) {
   global.class = {};
   global.history = null;
   global.center = new Victor();
+  global.size = new Victor();
   global.options = {
     spineCount:       64,
     spineColor:       "#ffffff",
@@ -29,6 +30,7 @@ var CircularDrawing = (function (global) {
     randomPointsCount: 0,
     saveEvery: 30,
     saveAsTimelapse: false,
+    selectedTool:     0,
   };
   // UI Elements
   var $drawer;
@@ -53,6 +55,8 @@ var CircularDrawing = (function (global) {
 
 
   $(function init() {
+    global.size.x = $(window).width();
+    global.size.y = $(window).height();
     // UI Elements
     $drawer = $("#drawer");
 
@@ -62,13 +66,12 @@ var CircularDrawing = (function (global) {
     drawingCtx = drawingCanvas.getContext("2d");
     toolsCanvas = $("<canvas/>").appendTo($drawer).get(0);
     toolsCtx = toolsCanvas.getContext("2d");
-
-    bgCanvas.width = $(window).width();
-    bgCanvas.height = $(window).height();
-    drawingCanvas.width = $(window).width();
-    drawingCanvas.height = $(window).height();
-    toolsCanvas.width = $(window).width();
-    toolsCanvas.height = $(window).height();
+    bgCanvas.width = global.size.x;
+    bgCanvas.height = global.size.y;
+    drawingCanvas.width = global.size.x;
+    drawingCanvas.height = global.size.y;
+    toolsCanvas.width = global.size.x;
+    toolsCanvas.height = global.size.y;
 
     global.overlayCtx = toolsCtx;
     global.drawingCtx = drawingCtx;
@@ -78,19 +81,19 @@ var CircularDrawing = (function (global) {
     global.center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
 
     registerEventListeners();
-    registerDatGuiElements();
+    //registerDatGuiElements();
     makeColorArray(1);
 
     global.ToolManager.init(toolsCanvas);
     global.cRenderer.init();
-    global.ToolManager.changeTool("Brush");
 
-    global.trigger('init', new Date());
+    global.trigger('optionsChanged');
+    global.trigger('init');
     run();
   });
 
   function run() {
-    resetSectors();
+    //resetSectors();
     running = true;
   }
   function makeColorArray(m) {
@@ -305,6 +308,11 @@ var CircularDrawing = (function (global) {
     }
     console.timeEnd("creating and adding sectors");
   }
+
+  global.bind("optionsChanged", function aaa() {
+    global.ToolManager.changeTool(global.options.selectedTool);
+    resetSectors();
+  });
   function getEndPoint(startPoint, i) {
     var eP = startPoint.clone();
     var radAngle = ((Math.PI * 2 / global.options.spineCount) * i);
@@ -344,7 +352,9 @@ var CircularDrawing = (function (global) {
   }
 
   class Tool {
-    constructor() {}
+    constructor() {
+      this.options = {};
+    }
     getContext(type) {
       switch(type) {
         case "tool":

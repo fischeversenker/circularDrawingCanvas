@@ -7,8 +7,11 @@
       this.drawing = false;
       this.start = new Victor(0, 0);
       this.end = new Victor(0, 0);
+      this.options.lineWidth = 2;
     }
-    enable() {}
+    enable() {
+      global.log("Line", "enable");
+    }
     disable() {}
 
     onMouseDown(pos, e) {
@@ -25,6 +28,7 @@
       }
     }
     onMouseUp(pos, e) {
+      if (!this.drawing) return;
       this.drawing = false;
       global.cRenderer.render(global.drawingCtx, this.renderLine.bind(this));
       this.clearOverlay();

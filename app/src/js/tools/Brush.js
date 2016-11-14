@@ -7,11 +7,12 @@
       this.drawing = false;
       this.pos;
     }
-    enable() {}
+    enable() {
+      global.log("Brush", "enable");
+    }
     disable() {}
 
     onMouseDown(pos, e) {
-      console.log("brush go");
       this.getHistory().saveState();
       this.drawing = true;
       this.pos = pos;

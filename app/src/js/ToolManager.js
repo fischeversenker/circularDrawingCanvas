@@ -30,12 +30,14 @@
       if (typeof toolNameOrID === "string")
         toolNameOrID = this._toolHash.indexOf(toolNameOrID);
 
-      if (typeof toolNameOrID === "number" && toolNameOrID < this._tools.length) {
+      if (toolNameOrID >= 0 && toolNameOrID < this._tools.length) {
+        global.options.selectedTool = toolNameOrID;
         //change tool
         this.disable();
         this._activeToolIndex = toolNameOrID;
         this._activeTool = this._tools[toolNameOrID];
         this.enable();
+        global.trigger("onChangeTool", this._tools[toolNameOrID]);
       }
     },
     getToolNames() {
