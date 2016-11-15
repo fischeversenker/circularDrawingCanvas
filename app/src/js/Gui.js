@@ -115,6 +115,7 @@
 
       gui.add({
         clear: function(){
+          global.history.saveState();
           global.options.randomPointsCount = 0;
           reConfigurate();
           global.drawingCtx.clearRect(0, 0, global.drawingCtx.canvas.width, global.drawingCtx.canvas.height);
