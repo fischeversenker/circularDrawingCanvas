@@ -1,6 +1,7 @@
 (function(global) {
   "use strict";
   var gui,
+      toolGui,
       bgFolder,
       toolFolder,
       fgFolder,
@@ -16,21 +17,23 @@
       gui = new dat.GUI();
       bgFolder = gui.addFolder('Background');
       fgFolder = gui.addFolder('Foreground');
-      toolFolder = gui.addFolder('Tool');
       gui.remember(global.options);
       this.initBgFolder();
       this.initFgFolder();
       this.initNewsFolder();
+      this.initToolGui();
     },
     onChangeTool(tool) {
       //@fixme remove elements from toolFolder
-      if (!toolFolder) return;
-      var controllers = toolFolder.__controllers.slice();
-      for(var i = 0; i < controllers.length; i++) {
-       // console.log(controllers[i]);
-        toolFolder.remove(controllers[i]);
-      }
-      //@todo add new gui elements toolFolder from tool.options
+      if (!toolGui) return;
+
+      this._removeAllControllers(toolGui, ["selectedTool"]);
+      // var controllers = toolGui.__controllers.slice();
+      // for(var i = 0; i < controllers.length; i++) {
+      //   if (controllers[i].property === "selectedTool") continue;
+      //   toolGui.remove(controllers[i]);
+      // }
+      tool.createGui(toolGui);
     },
     initBgFolder() {
       bgFolder.add(global.options, 'spineCount').onChange(reConfigurate);
@@ -112,25 +115,16 @@
 
       gui.add({
         clear: function(){
-          resetSectors();
           global.options.randomPointsCount = 0;
-          drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+          reConfigurate();
+          global.drawingCtx.clearRect(0, 0, global.drawingCtx.canvas.width, global.drawingCtx.canvas.height);
         },
       },'clear');
 
     },
 
     initNewsFolder() {
-      var toolNames = global.ToolManager.getToolNames();
-      var tools = {};
-      for(var i = 0; i < toolNames.length; i++) {
-        tools[toolNames[i]] = i;
-      }
       var newsFolder = gui.addFolder('News');
-      newsFolder.add(global.options, "selectedTool", tools).onChange(function(a) {
-        global.options.selectedTool = parseInt(a);
-        reConfigurate()
-      });
       newsFolder.add({
         Undo: function () {
           global.history.undo();
@@ -142,8 +136,33 @@
         }
       }, "Redo");
     },
-    initToolFolder() {
-      toolFolder.add(global.options, 'spineCount').onChange(reConfigurate);
+    initToolGui() {
+      //load tool names in the right format
+      var toolNames = global.ToolManager.getToolNames();
+      var tools = {};
+      for(var i = 0; i < toolNames.length; i++) {
+        tools[toolNames[i]] = i;
+      }
+      //add gui
+      toolGui = new dat.GUI();
+      toolGui.add(global.options, "selectedTool", tools).onChange(function(a) {
+        global.options.selectedTool = parseInt(a);
+        reConfigurate()
+      });
+    },
+    /**
+     *
+     * @param dat.GUI parent
+     * @param {array<string>} except list of controller propertie names
+     * @private
+     */
+    _removeAllControllers(parent, except) {
+      except = except || [];
+      var controllers = parent.__controllers.slice();
+      for(var i = 0; i < controllers.length; i++) {
+        if (except.indexOf(controllers[i].property) != -1) continue;
+        toolGui.remove(controllers[i]);
+      }
     }
   };
   global.bind("init", global.Gui.init.bind(global.Gui));
