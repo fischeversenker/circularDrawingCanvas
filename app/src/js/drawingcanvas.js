@@ -42,16 +42,11 @@ var CircularDrawing = (function (global) {
   var toolsCtx;
 
   // states
-  var running = false,
-      touching = false;
+  var running = false;
 
   // etc
   var sectors = [],
-      sectorAngle,
-      gui;
-
-
-
+      sectorAngle;
 
 
   $(function init() {
@@ -87,13 +82,12 @@ var CircularDrawing = (function (global) {
     global.ToolManager.init(toolsCanvas);
     global.cRenderer.init();
 
-    global.trigger('optionsChanged');
     global.trigger('init');
     run();
   });
 
   function run() {
-    //resetSectors();
+    global.trigger('optionsChanged');
     running = true;
   }
   function makeColorArray(m) {
@@ -128,40 +122,6 @@ var CircularDrawing = (function (global) {
     return point;
   }
   function registerEventListeners() {
-    // maybe add touch support?
-    // $(drawingCanvas).on('mousedown', function(e) {
-    //   if(running) {
-    //     global.history.saveState();
-    //     touching = true;
-    //     if(!options.eraseMode) {
-    //       drawStrokeAt(new Victor(e.offsetX, e.offsetY));
-    //     } else {
-    //       eraseAt(new Victor(e.offsetX, e.offsetY));
-    //     }
-    //   }
-    // });
-    // $(drawingCanvas).on('mousemove', function(e) {
-    //   if(running && touching) {
-    //     e.preventDefault();
-    //     if(!options.eraseMode) {
-    //       drawStrokeAt(new Victor(e.offsetX, e.offsetY));
-    //     } else {
-    //       eraseAt(new Victor(e.offsetX, e.offsetY));
-    //     }
-    //   }
-    //   if(options.eraseMode) {
-    //     $("#erase-preview").css({
-    //       top: e.offsetY - options.eraseRadius,
-    //       left: e.offsetX - options.eraseRadius,
-    //       width: options.eraseRadius * 2,
-    //       height: options.eraseRadius * 2,
-    //     });
-    //   }
-    // });
-    // $(window).on('mouseup', function(e) {
-    //   touching = false;
-    // });
-
     //bind keypress for ctrl->z and ctrl->y
     $(document).on("keypress", function (e) {
       if (e.ctrlKey && e.keyCode == 26)
@@ -182,113 +142,7 @@ var CircularDrawing = (function (global) {
       // run();
     });
   }
-  function registerDatGuiElements() {
-    gui = new dat.GUI();
-    gui.remember(global.options);
-    var bgFolder = gui.addFolder('Background');
-    var fgFolder = gui.addFolder('Foreground');
-    bgFolder.add(global.options, 'spineCount').onChange(function () {
-      resetSectors();
-    });
-    bgFolder.add(global.options, 'offsetX', -(bgCanvas.width / 2), (bgCanvas.width / 2)).onChange(function () {
-      resetSectors();
-    });
-    bgFolder.add(global.options, 'offsetY', -(bgCanvas.height / 2), (bgCanvas.height / 2)).onChange(function () {
-      resetSectors();
-    });
-    bgFolder.add(global.options, 'drawSections').onFinishChange(function () {
-      resetSectors();
-    });
-    bgFolder.addColor(global.options, 'backgroundColor');
-    bgFolder.open();
 
-    fgFolder.add(global.options, 'strokeSize', 1, 10);
-    fgFolder.addColor(global.options, 'strokeColor');
-    fgFolder.add(global.options, 'renderStyle', {
-                  HsL: 0,
-                  Hsl: 1,
-                  ColorArray: 2,
-                  perSection: 3,
-                  relative2mouse: 4,
-                  StrokeColor: 5,
-                  SaturationChange: 6} )
-      .onFinishChange(function() {
-        global.options.renderStyle = parseInt(global.options.renderStyle);
-      });
-    fgFolder.add(global.options, 'colorRadius', 50, 250);
-    fgFolder.add({opacity: 1}, 'opacity', 0.0, 1.0).onChange(function(v) {
-        $(drawingCanvas).css('opacity', v);
-      });
-      fgFolder.add(global.options, 'eraseMode').onChange(function(v) {
-        if($("#erase-preview").length === 0){
-          $("<div id='erase-preview' />").appendTo($drawer);
-        }
-        if(v) $("#erase-preview").show();
-        else $("#erase-preview").hide();
-      });
-      fgFolder.add(global.options, 'eraseRadius', 1, 100);
-      fgFolder.add(global.options, 'randomPointInterval', 1, 2000);
-      fgFolder.add(global.options, 'generateRandomPoints').listen().onFinishChange(function(v){
-        if(v){
-          global.options.randomPointIntervalId = window.setInterval(function(){
-            if(global.options.saveAsTimelapse &&
-              global.options.randomPointsCount > 0 &&
-               Math.floor(global.options.randomPointsCount % global.options.saveEvery) === 0) {
-              // clicks the download button every options.saveEvery random points
-              $('body > div.dg.ac > div > ul > li:nth-child(4) > div > span > a').click();
-            }
-            drawStrokeAt(generateRandomPoint());
-          }, global.options.randomPointInterval);
-        } else {
-          if(global.options.randomPointIntervalId > -1) {
-            clearInterval(global.options.randomPointIntervalId);
-          }
-        }
-      });
-    global.options.generateRandomPoints = false;
-      fgFolder.add(global.options, 'saveEvery', 50, 1000);
-      fgFolder.add(global.options, 'saveAsTimelapse');
-      fgFolder.open();
-      gui.add({
-        download: function(){
-          // TODO
-        },
-      },'download');
-      //Dirty hack to replace the download button with a link
-      //@todo $link needs a bit css
-      var $donwloadParent = $(".dg .cr.function .property-name");
-      var $link = $('<a>');
-      $link.html('Download');
-      $link.on("click", function(e) {
-        $link.get(0).href = drawingCanvas.toDataURL('image/png');
-        var filename = global.options.generateRandomPoints ? global.options.randomPointIntervalId + "-" + global.options.randomPointsCount + ".png" : "MyImage.png";
-        drawingCanvas.toBlob(function(blob) {
-          saveAs(blob, filename);
-        });
-          // $link.get(0).download = filename;
-      });
-      $donwloadParent.html($link);
-
-      gui.add({
-        clear: function(){
-          resetSectors();
-          global.options.randomPointsCount = 0;
-          drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-        },
-      },'clear');
-
-    var newsFolder = gui.addFolder('News');
-    newsFolder.add({
-      Undo: function () {
-        global.history.undo();
-      }
-    }, "Undo");
-    newsFolder.add({
-      Redo: function () {
-        global.history.redo();
-      }
-    }, "Redo");
-  }
   function resetSectors() {
     bgCtx.fillStyle = global.options.backgroundColor;
     bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
@@ -309,7 +163,7 @@ var CircularDrawing = (function (global) {
     console.timeEnd("creating and adding sectors");
   }
 
-  global.bind("optionsChanged", function aaa() {
+  global.bind("optionsChanged", function() {
     global.ToolManager.changeTool(global.options.selectedTool);
     resetSectors();
   });
@@ -367,6 +221,7 @@ var CircularDrawing = (function (global) {
     getHistory() {
       return global.history;
     }
+    createGui(datGuiParent) {}
     enable() {}
     disable() {}
   }
