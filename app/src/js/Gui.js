@@ -104,9 +104,9 @@
       var $link = $('<a>');
       $link.html('Download');
       $link.on("click", function(e) {
-        $link.get(0).href = drawingCanvas.toDataURL('image/png');
+        //$link.get(0).href = drawingCanvas.toDataURL('image/png');
         var filename = global.options.generateRandomPoints ? global.options.randomPointIntervalId + "-" + global.options.randomPointsCount + ".png" : "MyImage.png";
-        drawingCanvas.toBlob(function(blob) {
+        global.drawingCtx.canvas.toBlob(function(blob) {
           saveAs(blob, filename);
         });
         // $link.get(0).download = filename;
