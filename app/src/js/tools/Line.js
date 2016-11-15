@@ -13,6 +13,9 @@
       global.log("Line", "enable");
     }
     disable() {}
+    createGui(gui) {
+      gui.add(this.options, "lineWidth").min(1).max(30);
+    }
 
     onMouseDown(pos, e) {
       this.getHistory().saveState();
@@ -42,6 +45,7 @@
     }
     renderLine(ctx) {
       ctx.beginPath();
+      ctx.lineWidth = this.options.lineWidth;
       ctx.moveTo(this.start.x, this.start.y);
       ctx.lineTo(this.end.x, this.end.y);
       ctx.stroke();
