@@ -224,6 +224,9 @@ var CircularDrawing = (function (global) {
     createGui(datGuiParent) {}
     enable() {}
     disable() {}
+    clearOverlay() {
+      global.overlayCtx.clearRect(0, 0, global.overlayCtx.canvas.width, global.overlayCtx.canvas.height);
+    }
   }
   global.class.Tool = Tool;
   return global;
