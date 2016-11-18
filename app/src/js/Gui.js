@@ -1,6 +1,8 @@
 (function(global) {
   "use strict";
-  var gui,
+  var UPLOAD_URL = 'http://localhost:8080/upload.php',
+      GALLERY_URL = 'http://localhost:8080/gallery.php',
+      gui,
       toolGui,
       bgFolder,
       toolFolder,
@@ -121,9 +123,59 @@
           global.drawingCtx.clearRect(0, 0, global.drawingCtx.canvas.width, global.drawingCtx.canvas.height);
         },
       },'clear');
+      gui.add({
+        upload: function(){
+          console.log(global);
+          var canvasData = global.drawingCtx.canvas.toDataURL("image/png");
 
+          $.ajax({
+            type: 'POST',
+            url: UPLOAD_URL,
+            crossDomain: true,
+            data: {
+              artist: "Max Mustermann",
+              imgBase64: canvasData
+            },
+            success: function(responseData, textStatus) {
+              //console.log(responseData);
+            },
+            error: function (err) {
+              console.error(err);
+            }
+          });
+        },
+      },'upload');
+      
+      gui.add({
+        gallery: function(){
+          $.ajax({
+            type: 'POST',
+            url: GALLERY_URL,
+            data: {
+              from: 0,
+              to: 100,
+            },
+            success: function(responseData, textStatus) {
+              $('#gallery').show();
+              var data = JSON.parse(responseData);
+              var html = '<ul class="image-list">';
+              for(var i = 0; i < data.images.length; i++) {
+                html += '<li>';
+                html +=   '<img src="' + "images/" + data.images[i].name + '">';
+                html +=   '<span>' + data.images[i].artist + '</span>';
+                html += '</li>';
+              }
+              html += '</ul>';
+              $("#gallery .content").html(html);
+            },
+            error: function (err) {
+              console.error(err);
+            }
+          });
+        },
+      },'gallery').name("Open Gallery");
+      
     },
-
     initNewsFolder() {
       var newsFolder = gui.addFolder('News');
       newsFolder.add({
@@ -164,7 +216,7 @@
         if (except.indexOf(controllers[i].property) != -1) continue;
         toolGui.remove(controllers[i]);
       }
-    }
+    },
   };
   global.bind("init", global.Gui.init.bind(global.Gui));
   global.bind("onChangeTool", global.Gui.onChangeTool.bind(global.Gui));

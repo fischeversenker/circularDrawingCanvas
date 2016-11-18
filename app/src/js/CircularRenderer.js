@@ -29,7 +29,6 @@
       var l = Math.min(100, Math.sqrt(Math.pow(global.mouse.pos.x, 2) + Math.pow(global.mouse.pos.y, 2)) / 4);
       var diagonalVic = new Victor($(window).width(), $(window).height());
       var diag = diagonalVic.length();
-
       switch(options.renderStyle) {
         case 0:
           return 'hsl('+ hue +', '+'100%, '+ l +'%)';
