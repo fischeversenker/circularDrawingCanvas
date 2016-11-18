@@ -75,7 +75,6 @@ var CircularDrawing = (function (global) {
 
     global.center = new Victor(bgCanvas.width / 2, bgCanvas.height / 2);
 
-    registerEventListeners();
     //registerDatGuiElements();
     makeColorArray(1);
 
@@ -121,27 +120,7 @@ var CircularDrawing = (function (global) {
     global.options.randomPointsCount++;
     return point;
   }
-  function registerEventListeners() {
-    //bind keypress for ctrl->z and ctrl->y
-    $(document).on("keypress", function (e) {
-      if (e.ctrlKey && e.keyCode == 26)
-        global.history.undo();
-      else if (e.ctrlKey && e.keyCode == 25)
-        global.history.redo();
-    });
 
-    //download handler
-    $(window).resize(function () {
-      // if(DEVELOPMENT) return;
-      // bgCanvas.width  = $(window).width();
-      // bgCanvas.height = $(window).height();
-      // drawingCanvas.width  = $(window).width();
-      // drawingCanvas.height = $(window).height();
-      // center.x = bgCanvas.width / 2;
-      // center.y = bgCanvas.height / 2;
-      // run();
-    });
-  }
 
   function resetSectors() {
     bgCtx.fillStyle = global.options.backgroundColor;

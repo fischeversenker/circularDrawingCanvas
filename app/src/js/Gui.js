@@ -24,6 +24,7 @@
       this.initFgFolder();
       this.initNewsFolder();
       this.initToolGui();
+      this.registerEventListeners();
     },
     onChangeTool(tool) {
       //@fixme remove elements from toolFolder
@@ -157,6 +158,7 @@
             },
             success: function(responseData, textStatus) {
               $('#gallery').show();
+              console.log(responseData);
               var data = JSON.parse(responseData);
               var html = '<ul class="image-list">';
               for(var i = 0; i < data.images.length; i++) {
@@ -175,6 +177,9 @@
         },
       },'gallery').name("Open Gallery");
       
+    },
+    closeGallery() {
+      $('#gallery').hide();
     },
     initNewsFolder() {
       var newsFolder = gui.addFolder('News');
@@ -203,6 +208,18 @@
         reConfigurate()
       });
     },
+    finishImage() {
+      //@todo move canvas to a overlay where the user can crop the image and share, upload, download
+      var canvas = document.createElement('canvas');
+      canvas.width = global.size.x;
+      canvas.height = global.size.y;
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = global.options.backgroundColor;
+      ctx.rect(0, 0, global.size.x, global.size.y);
+      ctx.fill();
+      ctx.drawImage(global.drawingCtx.canvas, 0, 0);
+      return canvas;
+    },
     /**
      *
      * @param dat.GUI parent
@@ -217,18 +234,32 @@
         toolGui.remove(controllers[i]);
       }
     },
-    finishImage() {
-      //@todo move canvas to a overlay where the user can crop the image and share, upload, download
-      var canvas = document.createElement('canvas');
-      canvas.width = global.size.x;
-      canvas.height = global.size.y;
-      var ctx = canvas.getContext("2d");
-      ctx.fillStyle = global.options.backgroundColor;
-      ctx.rect(0, 0, global.size.x, global.size.y);
-      ctx.fill();
-      ctx.drawImage(global.drawingCtx.canvas, 0, 0);
-      return canvas;
-    }
+    registerEventListeners() {
+      var self = this;
+      //bind keypress for ctrl->z and ctrl->y
+      $(document).on("keypress", function (e) {
+        if (e.ctrlKey && e.keyCode == 26)
+          global.history.undo();
+        else if (e.ctrlKey && e.keyCode == 25)
+          global.history.redo();
+      });
+
+      //download handler
+      $(window).resize(function () {
+        // if(DEVELOPMENT) return;
+        // bgCanvas.width  = $(window).width();
+        // bgCanvas.height = $(window).height();
+        // drawingCanvas.width  = $(window).width();
+        // drawingCanvas.height = $(window).height();
+        // center.x = bgCanvas.width / 2;
+        // center.y = bgCanvas.height / 2;
+        // run();
+      });
+      $("#close-gallery").on("click", function() {
+        //@todo close gallery
+        self.closeGallery();
+      });
+    },
   };
   global.bind("init", global.Gui.init.bind(global.Gui));
   global.bind("onChangeTool", global.Gui.onChangeTool.bind(global.Gui));
