@@ -106,13 +106,13 @@
       var $link = $('<a>');
       $link.html('Download');
       $link.on("click", function(e) {
-        //$link.get(0).href = drawingCanvas.toDataURL('image/png');
+        var canvas = this.finishImage();
+
         var filename = global.options.generateRandomPoints ? global.options.randomPointIntervalId + "-" + global.options.randomPointsCount + ".png" : "MyImage.png";
-        global.drawingCtx.canvas.toBlob(function(blob) {
+        canvas.toBlob(function(blob) {
           saveAs(blob, filename);
         });
-        // $link.get(0).download = filename;
-      });
+      }.bind(this));
       $donwloadParent.html($link);
 
       gui.add({
@@ -125,8 +125,9 @@
       },'clear');
       gui.add({
         upload: function(){
-          console.log(global);
-          var canvasData = global.drawingCtx.canvas.toDataURL("image/png");
+          this.finishImage();
+          var canvas = this.finishImage();
+          var canvasData = canvas.toDataURL("image/png");
 
           $.ajax({
             type: 'POST',
@@ -143,9 +144,8 @@
               console.error(err);
             }
           });
-        },
+        }.bind(this),
       },'upload');
-      
       gui.add({
         gallery: function(){
           $.ajax({
@@ -217,6 +217,18 @@
         toolGui.remove(controllers[i]);
       }
     },
+    finishImage() {
+      //@todo move canvas to a overlay where the user can crop the image and share, upload, download
+      var canvas = document.createElement('canvas');
+      canvas.width = global.size.x;
+      canvas.height = global.size.y;
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = global.options.backgroundColor;
+      ctx.rect(0, 0, global.size.x, global.size.y);
+      ctx.fill();
+      ctx.drawImage(global.drawingCtx.canvas, 0, 0);
+      return canvas;
+    }
   };
   global.bind("init", global.Gui.init.bind(global.Gui));
   global.bind("onChangeTool", global.Gui.onChangeTool.bind(global.Gui));
