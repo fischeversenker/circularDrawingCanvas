@@ -23,7 +23,9 @@
       ctx.restore();
     },
     _getColor(i) {
-      var hue = global.mouse.angle * (180 / Math.PI);//  ((angleOffset + sectorAngle * i) / (Math.PI * 2)) * 360;
+      var sectorAngle = 360 / options.spineCount;
+      var hue = global.mouse.angle * (180 / Math.PI)  + sectorAngle * i;
+      //  ((angleOffset + sectorAngle * i) / (Math.PI * 2)) * 360;
       var l = Math.min(100, Math.sqrt(Math.pow(global.mouse.pos.x, 2) + Math.pow(global.mouse.pos.y, 2)) / 4);
       var diagonalVic = new Victor($(window).width(), $(window).height());
       var diag = diagonalVic.length();
@@ -38,7 +40,6 @@
           return options.sectorColors[1];
         case 3:
           //fixme needs the sector id
-          var sectorAngle = 360 / options.spineCount;
           hue = (Math.floor( (global.mouse.angle + sectorAngle * i) / sectorAngle) * sectorAngle).toDeg();
           l = 50;
           return 'hsl('+ hue +', '+'100%, '+ l +'%)';
