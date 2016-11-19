@@ -1,6 +1,9 @@
 (function(global) {
   "use strict";
-  var gui,
+  var UPLOAD_URL = 'http://localhost:8080/upload.php',
+      GALLERY_URL = 'http://localhost:8080/gallery.php',
+      gui,
+      toolGui,
       bgFolder,
       toolFolder,
       fgFolder,
@@ -16,21 +19,24 @@
       gui = new dat.GUI();
       bgFolder = gui.addFolder('Background');
       fgFolder = gui.addFolder('Foreground');
-      toolFolder = gui.addFolder('Tool');
       gui.remember(global.options);
       this.initBgFolder();
       this.initFgFolder();
       this.initNewsFolder();
+      this.initToolGui();
+      this.registerEventListeners();
     },
     onChangeTool(tool) {
       //@fixme remove elements from toolFolder
-      if (!toolFolder) return;
-      var controllers = toolFolder.__controllers.slice();
-      for(var i = 0; i < controllers.length; i++) {
-       // console.log(controllers[i]);
-        toolFolder.remove(controllers[i]);
-      }
-      //@todo add new gui elements toolFolder from tool.options
+      if (!toolGui) return;
+
+      this._removeAllControllers(toolGui, ["selectedTool"]);
+      // var controllers = toolGui.__controllers.slice();
+      // for(var i = 0; i < controllers.length; i++) {
+      //   if (controllers[i].property === "selectedTool") continue;
+      //   toolGui.remove(controllers[i]);
+      // }
+      tool.createGui(toolGui);
     },
     initBgFolder() {
       bgFolder.add(global.options, 'spineCount').onChange(reConfigurate);
@@ -101,36 +107,82 @@
       var $link = $('<a>');
       $link.html('Download');
       $link.on("click", function(e) {
-        $link.get(0).href = drawingCanvas.toDataURL('image/png');
+        var canvas = this.finishImage();
+
         var filename = global.options.generateRandomPoints ? global.options.randomPointIntervalId + "-" + global.options.randomPointsCount + ".png" : "MyImage.png";
-        drawingCanvas.toBlob(function(blob) {
+        canvas.toBlob(function(blob) {
           saveAs(blob, filename);
         });
-        // $link.get(0).download = filename;
-      });
+      }.bind(this));
       $donwloadParent.html($link);
 
       gui.add({
         clear: function(){
-          resetSectors();
+          global.history.saveState();
           global.options.randomPointsCount = 0;
-          drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+          reConfigurate();
+          global.drawingCtx.clearRect(0, 0, global.drawingCtx.canvas.width, global.drawingCtx.canvas.height);
         },
       },'clear');
+      gui.add({
+        upload: function(){
+          this.finishImage();
+          var canvas = this.finishImage();
+          var canvasData = canvas.toDataURL("image/png");
 
+          $.ajax({
+            type: 'POST',
+            url: UPLOAD_URL,
+            crossDomain: true,
+            data: {
+              artist: "Max Mustermann",
+              imgBase64: canvasData
+            },
+            success: function(responseData, textStatus) {
+              //console.log(responseData);
+            },
+            error: function (err) {
+              console.error(err);
+            }
+          });
+        }.bind(this),
+      },'upload');
+      gui.add({
+        gallery: function(){
+          $.ajax({
+            type: 'POST',
+            url: GALLERY_URL,
+            data: {
+              from: 0,
+              to: 100,
+            },
+            success: function(responseData, textStatus) {
+              $('#gallery').show();
+              console.log(responseData);
+              var data = JSON.parse(responseData);
+              var html = '<ul class="image-list">';
+              for(var i = 0; i < data.images.length; i++) {
+                html += '<li>';
+                html +=   '<img src="' + "images/" + data.images[i].name + '">';
+                html +=   '<span>' + data.images[i].artist + '</span>';
+                html += '</li>';
+              }
+              html += '</ul>';
+              $("#gallery .content").html(html);
+            },
+            error: function (err) {
+              console.error(err);
+            }
+          });
+        },
+      },'gallery').name("Open Gallery");
+      
     },
-
+    closeGallery() {
+      $('#gallery').hide();
+    },
     initNewsFolder() {
-      var toolNames = global.ToolManager.getToolNames();
-      var tools = {};
-      for(var i = 0; i < toolNames.length; i++) {
-        tools[toolNames[i]] = i;
-      }
       var newsFolder = gui.addFolder('News');
-      newsFolder.add(global.options, "selectedTool", tools).onChange(function(a) {
-        global.options.selectedTool = parseInt(a);
-        reConfigurate()
-      });
       newsFolder.add({
         Undo: function () {
           global.history.undo();
@@ -142,9 +194,72 @@
         }
       }, "Redo");
     },
-    initToolFolder() {
-      toolFolder.add(global.options, 'spineCount').onChange(reConfigurate);
-    }
+    initToolGui() {
+      //load tool names in the right format
+      var toolNames = global.ToolManager.getToolNames();
+      var tools = {};
+      for(var i = 0; i < toolNames.length; i++) {
+        tools[toolNames[i]] = i;
+      }
+      //add gui
+      toolGui = new dat.GUI();
+      toolGui.add(global.options, "selectedTool", tools).onChange(function(a) {
+        global.options.selectedTool = parseInt(a);
+        reConfigurate()
+      });
+    },
+    finishImage() {
+      //@todo move canvas to a overlay where the user can crop the image and share, upload, download
+      var canvas = document.createElement('canvas');
+      canvas.width = global.size.x;
+      canvas.height = global.size.y;
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = global.options.backgroundColor;
+      ctx.rect(0, 0, global.size.x, global.size.y);
+      ctx.fill();
+      ctx.drawImage(global.drawingCtx.canvas, 0, 0);
+      return canvas;
+    },
+    /**
+     *
+     * @param dat.GUI parent
+     * @param {array<string>} except list of controller propertie names
+     * @private
+     */
+    _removeAllControllers(parent, except) {
+      except = except || [];
+      var controllers = parent.__controllers.slice();
+      for(var i = 0; i < controllers.length; i++) {
+        if (except.indexOf(controllers[i].property) != -1) continue;
+        toolGui.remove(controllers[i]);
+      }
+    },
+    registerEventListeners() {
+      var self = this;
+      //bind keypress for ctrl->z and ctrl->y
+      $(document).on("keypress", function (e) {
+        if (e.ctrlKey && e.keyCode == 26)
+          global.history.undo();
+        else if (e.ctrlKey && e.keyCode == 25)
+          global.history.redo();
+      });
+
+      //download handler
+      $(window).resize(function () {
+        // if(DEVELOPMENT) return;
+        // bgCanvas.width  = $(window).width();
+        // bgCanvas.height = $(window).height();
+        // drawingCanvas.width  = $(window).width();
+        // drawingCanvas.height = $(window).height();
+        // center.x = bgCanvas.width / 2;
+        // center.y = bgCanvas.height / 2;
+        // run();
+      });
+      $("#close-gallery").on("click", function() {
+        //@todo close gallery
+        self.closeGallery();
+      });
+    },
   };
   global.bind("init", global.Gui.init.bind(global.Gui));
   global.bind("onChangeTool", global.Gui.onChangeTool.bind(global.Gui));

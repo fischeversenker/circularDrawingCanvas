@@ -23,36 +23,36 @@
       ctx.restore();
     },
     _getColor(i) {
-      var hue = global.mouse.angle * (180 / Math.PI);//  ((angleOffset + sectorAngle * i) / (Math.PI * 2)) * 360;
-      var v = Math.min(100, Math.sqrt(Math.pow(global.mouse.pos.x, 2) + Math.pow(global.mouse.pos.y, 2)) / 4);
-
+      var sectorAngle = 360 / options.spineCount;
+      var hue = global.mouse.angle * (180 / Math.PI)  + sectorAngle * i;
+      //  ((angleOffset + sectorAngle * i) / (Math.PI * 2)) * 360;
+      var l = Math.min(100, Math.sqrt(Math.pow(global.mouse.pos.x, 2) + Math.pow(global.mouse.pos.y, 2)) / 4);
+      var diagonalVic = new Victor($(window).width(), $(window).height());
+      var diag = diagonalVic.length();
       switch(options.renderStyle) {
         case 0:
-          return 'hsl('+ hue +', '+'100%, '+ v +'%)';
-          break;
+          return 'hsl('+ hue +', '+'100%, '+ l +'%)';
         case 1:
           return 'hsl('+ hue +', 100%, 50%)';
-          break;
         case 2:
           //fixme needs the sector id
           return options.sectorColors[1];
-          break;
         case 3:
           //fixme needs the sector id
-          var sectorAngle = 360 / options.spineCount;
           hue = (Math.floor( (global.mouse.angle + sectorAngle * i) / sectorAngle) * sectorAngle).toDeg();
-          v = 50;
-          return 'hsl('+ hue +', '+'100%, '+ v +'%)';
-          break;
+          l = 50;
+          return 'hsl('+ hue +', '+'100%, '+ l +'%)';
         case 4:
           //fixme needs the sector id
           hue = (1 / (options.spineCount-1)) * 360;
-          v = 50;
-          return 'hsl('+ hue +', '+'100%, '+ v +'%)';
-          break;
+          l = 50;
+          return 'hsl('+ hue +', '+'100%, '+ l +'%)';
         case 5:
           return options.strokeColor;
-          break;
+        case 6:
+          l = Math.min(100, options.colorRadius * global.mouse.pos.length() / (diag / 2));
+          // l = 100 * pos.length() / (diag / 2);
+          return 'hsl('+ hue +', ' + '100%, '+ l + '%)';
       }
     }
   };

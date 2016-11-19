@@ -13,6 +13,9 @@
       global.log("Line", "enable");
     }
     disable() {}
+    createGui(gui) {
+      gui.add(this.options, "lineWidth").min(1).max(30);
+    }
 
     onMouseDown(pos, e) {
       this.getHistory().saveState();
@@ -37,14 +40,18 @@
       this.clearOverlay();
       global.cRenderer.render(global.overlayCtx, this.renderLine.bind(this));
     }
-    clearOverlay() {
-      global.overlayCtx.clearRect(0, 0, global.overlayCtx.canvas.width, global.overlayCtx.canvas.height);
-    }
     renderLine(ctx) {
+      ctx.save();
+      ctx.lineJoin = ctx.lineCap = 'round';
+      //ctx.shadowBlur = 10;
+      // shadow color
+      //ctx.shadowColor = 'rgb(0, 0, 0)';
       ctx.beginPath();
+      ctx.lineWidth = this.options.lineWidth;
       ctx.moveTo(this.start.x, this.start.y);
       ctx.lineTo(this.end.x, this.end.y);
       ctx.stroke();
+      ctx.restore();
     }
   }
   global.ToolManager.registerTool(Line);
