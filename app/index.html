@@ -11,6 +11,7 @@
   <script src="src/js/libs/microevent.js"></script>
   <script src="src/js/drawingcanvas.js"></script>
   <script src="src/js/CircularRenderer.js"></script>
+  <script src="src/js/FullGui.js"></script>
   <script src="src/js/Gui.js"></script>
   <script src="src/js/ToolManager.js"></script>
   <script src="src/js/tools/Brush.js"></script>
@@ -20,7 +21,7 @@
   <script src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/14082/FileSaver.js"></script>
   <link rel="stylesheet" href="src/css/app.css" />
   <style>
-    #gallery {
+    #full-gui {
       color: white;
       display: none;
       position: absolute;
@@ -30,55 +31,80 @@
       background-color: rgba(0, 0, 0, 0.7);
     }
     /* #2c2c2c border color  blue #2FA1D6*/
-    #gallery .box {
-      width: 620px;
-      height: 80%;
-      background: #000;
+    #full-gui .box {
       position: absolute;
       top: 10%;
       left: calc(50% - 300px);
-    }
-    #gallery .header {
-      border-left: 3px solid #2FA1D6;
-      padding: 5px;
-      background: #000;
-      height: 5%;
-    }
-    #gallery .header span {
+      width: 620px;
+      height: 80%;
+      display: flex;
+      flex-direction: column;
 
+      background: #000;
+      color: #eee;
+      font: 11px 'Lucida Grande', sans-serif;
+      text-shadow: 0 -1px 0 #111;
     }
-    #gallery .content {
+    header ,footer {
+      background: #000;
+      height: 27px;
+      line-height: 27px;
+      padding: 0 5px 0 5px;
+    }
+    header {
+      border-left: 2px solid #2FA1D6;
+    }
+    header .menu {
+      font-size: medium;
+      cursor: pointer;
+    }
+    header .title {
+      margin-left: 10px;
+    }
+    content {
+      flex: 1;
       background: #1a1a1a;
-      height: calc(80%);
       overflow-y: scroll;
-      padding: 10px;
     }
-    #gallery .content .image-list li {
+    footer {
+    }
+    #full-gui content .image-list li {
       float: left;
       width: 200px;
       height: 200px;
       overflow: hidden;
     }
-    #gallery .content .image-list li img {
+    #full-gui content .image-list li img {
       width: 200px;
     }
-    #gallery .footer {
-      height: 10%;
+    .full-gui-close {
+      cursor: pointer;
+    }
+    input[type=text] {
+      color: #2FA1D6;
+    }
+    input[type=text] {
+      background: #303030;
+      outline: none;
+    }
+    input[type=text] {
+      border: 0;
+      margin-top: 4px;
+      padding: 3px;
     }
   </style>
 </head>
 <body>
   <div id="drawer"></div>
-  <div id="gallery">
+  <div id="full-gui">
     <div class="box">
-      <div class="header">
-        <span style="float:left;">Gallery</span>
-        <span id="close-gallery" style="float:right;">X</span>
-      </div>
-      <div class="content"></div>
-      <div class="footer">
-        <span></span>
-      </div>
+      <header>
+        <span class="menu" style="float:left;">|||</span>
+        <span class="title" style="float:left;">Gallery</span>
+        <span class="full-gui-close" style="float:right;">X</span>
+      </header>
+      <content></content>
+      <footer></footer>
     </div>
   </div>
 </body>
