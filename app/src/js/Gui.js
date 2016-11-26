@@ -1,7 +1,7 @@
 (function(global) {
   "use strict";
-  var UPLOAD_URL = 'http://localhost:8080/upload.php',
-      GALLERY_URL = 'http://localhost:8080/gallery.php',
+  var UPLOAD_URL = 'http://localhost:88/upload.php',
+      GALLERY_URL = 'http://localhost:88/gallery.php',
       gui,
       toolGui,
       bgFolder,
@@ -272,7 +272,6 @@
       var image = new Image();
       image.src = this._$canvas.toDataURL("image/png");
       image.onload = function() {
-        console.log("loaded", this._$content, $(".preview", this._$content));
         $(".preview", this._$content)[0].src = image.src;
         callBack();
       }.bind(this);
@@ -293,7 +292,7 @@
           artist: artistName,
           imgBase64: canvasData
         },
-        success: function () {
+        success: function (e) {
           global.Fullgui.goTo("Gallery");
         },
         error: function (err) {
