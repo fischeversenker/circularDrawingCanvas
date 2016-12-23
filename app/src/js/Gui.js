@@ -1,7 +1,7 @@
 (function(global) {
   "use strict";
-  var UPLOAD_URL = 'http://localhost:8080/upload.php',
-      GALLERY_URL = 'http://localhost:8080/gallery.php',
+  var UPLOAD_URL = 'http://localhost:88/upload.php',
+      GALLERY_URL = 'http://localhost:88/gallery.php',
       gui,
       toolGui,
       bgFolder,
@@ -25,6 +25,7 @@
       this.initNewsFolder();
       this.initToolGui();
       this.registerEventListeners();
+      this.initFullGui();
     },
     onChangeTool(tool) {
       //@fixme remove elements from toolFolder
@@ -126,60 +127,17 @@
       },'clear');
       gui.add({
         upload: function(){
-          this.finishImage();
-          var canvas = this.finishImage();
-          var canvasData = canvas.toDataURL("image/png");
-
-          $.ajax({
-            type: 'POST',
-            url: UPLOAD_URL,
-            crossDomain: true,
-            data: {
-              artist: "Max Mustermann",
-              imgBase64: canvasData
-            },
-            success: function(responseData, textStatus) {
-              //console.log(responseData);
-            },
-            error: function (err) {
-              console.error(err);
-            }
-          });
-        }.bind(this),
-      },'upload');
+          global.Fullgui.goTo("Upload");
+          global.Fullgui.open();
+        },
+      },'upload').name("Upload");
       gui.add({
         gallery: function(){
-          $.ajax({
-            type: 'POST',
-            url: GALLERY_URL,
-            data: {
-              from: 0,
-              to: 100,
-            },
-            success: function(responseData, textStatus) {
-              $('#gallery').show();
-              console.log(responseData);
-              var data = JSON.parse(responseData);
-              var html = '<ul class="image-list">';
-              for(var i = 0; i < data.images.length; i++) {
-                html += '<li>';
-                html +=   '<img src="' + "images/" + data.images[i].name + '">';
-                html +=   '<span>' + data.images[i].artist + '</span>';
-                html += '</li>';
-              }
-              html += '</ul>';
-              $("#gallery .content").html(html);
-            },
-            error: function (err) {
-              console.error(err);
-            }
-          });
+          global.Fullgui.goTo("Gallery");
+          global.Fullgui.open();
         },
       },'gallery').name("Open Gallery");
       
-    },
-    closeGallery() {
-      $('#gallery').hide();
     },
     initNewsFolder() {
       var newsFolder = gui.addFolder('News');
@@ -208,8 +166,43 @@
         reConfigurate()
       });
     },
+    initFullGui() {
+      //create Gallery page
+      var galleryPage = global.Fullgui.createPage("Gallery");
+      galleryPage.loadContent = function(cb) {
+
+        $.ajax({
+          type: 'POST',
+          url: GALLERY_URL,
+          data: {
+            from: 0,
+            to: 100,
+          },
+          success: function(responseData, textStatus) {
+            $('#full-gui').show();
+            var data = JSON.parse(responseData);
+            var html = '<ul class="image-list">';
+            for(var i = 0; i < data.images.length; i++) {
+              html += '<li>';
+              html +=   '<img src="' + "images/" + data.images[i].name + '">';
+              html +=   '<span>' + data.images[i].artist + '</span>';
+              html += '</li>';
+            }
+            html += '</ul>';
+            galleryPage._$content = $($.parseHTML(html)[0]);
+            cb();
+          },
+          error: function (err) {
+            console.error(err);
+          }
+        });
+      };
+
+      global.Fullgui.addPage(galleryPage);
+      global.Fullgui.addPage(new UploadPage());
+    },
+
     finishImage() {
-      //@todo move canvas to a overlay where the user can crop the image and share, upload, download
       var canvas = document.createElement('canvas');
       canvas.width = global.size.x;
       canvas.height = global.size.y;
@@ -235,7 +228,6 @@
       }
     },
     registerEventListeners() {
-      var self = this;
       //bind keypress for ctrl->z and ctrl->y
       $(document).on("keypress", function (e) {
         if (e.ctrlKey && e.keyCode == 26)
@@ -255,12 +247,58 @@
         // center.y = bgCanvas.height / 2;
         // run();
       });
-      $("#close-gallery").on("click", function() {
-        //@todo close gallery
-        self.closeGallery();
-      });
     },
   };
   global.bind("init", global.Gui.init.bind(global.Gui));
   global.bind("onChangeTool", global.Gui.onChangeTool.bind(global.Gui));
+
+
+  class UploadPage extends global.Fullgui.Page {
+    constructor() {
+      super("Upload");
+      this._$canvas;
+      this._$content = $($.parseHTML(`<div>
+        <img class="preview"style="max-width: 600px;max-height: 300px;">
+        <br>
+        <input class="artistName" type="text" placeholder="your name">
+        <br>
+        <button class="buttonUpload">Upload</button></div>
+      `));
+    }
+
+    loadContent(callBack) {
+      this._$canvas = global.Gui.finishImage();
+
+      var image = new Image();
+      image.src = this._$canvas.toDataURL("image/png");
+      image.onload = function() {
+        $(".preview", this._$content)[0].src = image.src;
+        callBack();
+      }.bind(this);
+      $(".buttonUpload", this._$content).on("click", function() {
+        this.upload();
+      }.bind(this));
+    }
+
+    upload() {
+      var canvasData = this._$canvas.toDataURL("image/png"),
+          artistName = $(".artistName", this._$content).val();
+
+      artistName = (artistName === "")? (Math.random() * 16777216).toString(16): artistName;
+      $.ajax({
+        type: 'POST',
+        url: UPLOAD_URL,
+        data: {
+          artist: artistName,
+          imgBase64: canvasData
+        },
+        success: function (e) {
+          global.Fullgui.goTo("Gallery");
+        },
+        error: function (err) {
+          alert("Error: can't upload Image");
+        }
+      });
+    }
+  }
 })(CircularDrawing);
